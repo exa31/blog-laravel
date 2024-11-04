@@ -1,7 +1,13 @@
 <script setup>
-import { usePage, Head } from '@inertiajs/vue3';
+import { usePage, Head, router } from '@inertiajs/vue3';
 import { formatDateTime } from '../helper/index';
 const { post } = usePage().props;
+
+const handleLike = async () => {
+    const res = router.post('/like/' + post.id, { id: post.id });
+    console.log(res);
+
+}
 </script>
 
 <template>
@@ -25,7 +31,7 @@ const { post } = usePage().props;
                 </div>
             </div>
         </div>
-        <div class="flex flex-col items-center justify-center hover:cursor-pointer ms-3 w-min">
+        <div @click="handleLike" class="flex flex-col items-center justify-center hover:cursor-pointer ms-3 w-min">
             <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
                 width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                 <path fill-rule="evenodd"

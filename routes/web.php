@@ -6,7 +6,10 @@ use App\Http\Controllers\PostController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PostController::class, 'index'])->name('home');
+
 Route::get('/post/{slug}', [PostController::class, 'show'])->name('home');
+
+Route::post('/like/{id}', [PostController::class, 'like'])->name('likePost');
 
 Route::get('/login', [AuthController::class, 'login'])->name('login');
 

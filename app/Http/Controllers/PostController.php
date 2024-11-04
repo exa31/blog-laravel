@@ -77,11 +77,28 @@ class PostController extends Controller
 
     public function like(string $id)
     {
-        $existLike = Like::firstWhere('user_id', Auth::id())->where('post_id', $id);
+        $existLike = Like::where('user_id', Auth::id())->where('post_id', $id)->first();
+
         if ($existLike) {
             DB::beginTransaction();
             try {
                 $existLike->delete();
+                Post::find($id)->decrement('like');
+                DB::commit();
+            } catch (\Throwable $th) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Failed to like post'
+                ], 500);
+            }
+        } else {
+            DB::beginTransaction();
+            try {
+                Like::create([
+                    'user_id' => Auth::id(),
+                    'post_id' => $id
+                ]);
+                Post::find($id)->increment('like');
                 DB::commit();
             } catch (\Throwable $th) {
                 DB::rollBack();
@@ -90,20 +107,9 @@ class PostController extends Controller
                 ], 500);
             }
         }
-        DB::beginTransaction();
-        try {
-            Like::create([
-                'user_id' => Auth::id(),
-                'post_id' => $id
-            ]);
-            DB::commit();
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Failed to like post'
-            ], 500);
-        }
-        return;
+        return response()->json([
+            'message' => 'Post liked successfully'
+        ], 200);
     }
 
     /**
