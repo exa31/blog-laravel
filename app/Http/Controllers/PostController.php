@@ -17,17 +17,22 @@ class PostController extends Controller
     public function index()
     {
         $isLogin = Auth::check();
-        $user = Auth::user();
 
-        $name = $user->name;
+        $user = Auth::user();
+        if ($user) {
+            $name = $user->name;
+            $name = explode(' ', $name);
+            $avatar = strtoupper($name[0][0] . $name[1][0]);
+        }
+
         $post = Post::with('user')->get();
-        $name = explode(' ', $name);
-        $avatar = strtoupper($name[0][0] . $name[1][0]);
+
+
         return Inertia::render('Home', [
             'posts' => $post,
             'user' => $user,
             'isLogin' => $isLogin,
-            'avatar' => $avatar
+            'avatar' => $avatar ?? null
         ]);
     }
 
@@ -52,9 +57,22 @@ class PostController extends Controller
      */
     public function show(string $slug)
     {
+        $isLogin = Auth::check();
+        $user = Auth::user();
+        if ($user) {
+            $name = $user->name;
+            $name = explode(' ', $name);
+            $avatar = strtoupper($name[0][0] . $name[1][0]);
+        }
         $post = Post::with('user')->firstWhere('slug', $slug);
+        $liked = Like::where('user_id', Auth::id())->get();
+        $liked = $liked->contains('post_id', $post->id);
         return Inertia::render('DetailPost', [
-            'post' => $post
+            'post' => $post,
+            'isLogin' => $isLogin,
+            'isLiked' => $liked,
+            'user' => $user,
+            'avatar' => $avatar ?? null,
         ]);
 
     }
@@ -75,20 +93,25 @@ class PostController extends Controller
         //
     }
 
-    public function like(string $id)
+    public function like(Request $request)
     {
-        $existLike = Like::where('user_id', Auth::id())->where('post_id', $id)->first();
-
+        $existLike = Like::where('user_id', Auth::id())->where('post_id', $request->id)->first();
         if ($existLike) {
             DB::beginTransaction();
             try {
                 $existLike->delete();
-                Post::find($id)->decrement('like');
+                $post = Post::find($request->id);
+                $post->decrement('like');
                 DB::commit();
+                return response()->json([
+                    'message' => 'Success to unlike post',
+                    'like' => $post->like,
+                    'isLiked' => false
+                ], 200);
             } catch (\Throwable $th) {
                 DB::rollBack();
                 return response()->json([
-                    'message' => 'Failed to like post'
+                    'message' => $th->getMessage()
                 ], 500);
             }
         } else {
@@ -96,20 +119,23 @@ class PostController extends Controller
             try {
                 Like::create([
                     'user_id' => Auth::id(),
-                    'post_id' => $id
+                    'post_id' => $request->id
                 ]);
-                Post::find($id)->increment('like');
+                $post = Post::find($request->id);
+                $post->increment('like');
                 DB::commit();
+                return response()->json([
+                    'message' => 'Success to like post',
+                    'like' => $post->like,
+                    'isLiked' => true
+                ], 200);
             } catch (\Throwable $th) {
                 DB::rollBack();
                 return response()->json([
-                    'message' => 'Failed to like post'
+                    'message' => 'Failed to like post t' . $th->getMessage()
                 ], 500);
             }
         }
-        return response()->json([
-            'message' => 'Post liked successfully'
-        ], 200);
     }
 
     /**
