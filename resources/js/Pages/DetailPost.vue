@@ -12,21 +12,26 @@ const handleLike = async () => {
         props.isLiked = !props.isLiked;
         return props.post.like = res.data.like;
     }
-    router.push('/login');
+    router.visit('/login');
     return;
 }
-
+console.log(props.post);
 const sideComment = ref(false);
 
 const handleComment = () => {
-    sideComment.value = !sideComment.value;
+    if (props.isLogin) {
+        return sideComment.value = !sideComment.value;
+    }
+    router.visit('/login');
+    return;
 }
 
 </script>
 
 <template>
     <main>
-        <SidebarComments v-model:sideComment="sideComment" :comments="props.comments" :user="props.user" />
+        <SidebarComments v-if="props.isLogin" v-model:sideComment="sideComment" :comments="props.post.comments"
+            :user="props.user" :idPost="props.post.id" />
 
         <Head>
             <title>{{ props.post.slug }}</title>
@@ -72,7 +77,7 @@ const handleComment = () => {
                             d="M8.023 17.215c.033-.03.066-.062.098-.094L10.243 15H15a3 3 0 0 0 3-3V8h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1v2a1 1 0 0 1-1.707.707L14.586 18H9a1 1 0 0 1-.977-.785Z"
                             clip-rule="evenodd" />
                     </svg>
-                    <p>{{ props.post.comment_count ?? 0 }}</p>
+                    <p>{{ props.post.comments.length }}</p>
                 </div>
             </div>
             <img class="object-cover w-full rounded-lg h-96" :src="`/storage/${props.post.image_thumbnail}`"

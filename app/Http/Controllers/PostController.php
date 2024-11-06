@@ -19,11 +19,6 @@ class PostController extends Controller
         $isLogin = Auth::check();
 
         $user = Auth::user();
-        if ($user) {
-            $name = $user->name;
-            $name = explode(' ', $name);
-            $avatar = strtoupper($name[0][0] . $name[1][0]);
-        }
 
         $post = Post::with('user')->get();
 
@@ -32,7 +27,6 @@ class PostController extends Controller
             'posts' => $post,
             'user' => $user,
             'isLogin' => $isLogin,
-            'avatar' => $avatar ?? null
         ]);
     }
 
@@ -59,20 +53,16 @@ class PostController extends Controller
     {
         $isLogin = Auth::check();
         $user = Auth::user();
-        if ($user) {
-            $name = $user->name;
-            $name = explode(' ', $name);
-            $avatar = strtoupper($name[0][0] . $name[1][0]);
-        }
-        $post = Post::with('user')->firstWhere('slug', $slug);
-        $liked = Like::where('user_id', Auth::id())->get();
-        $liked = $liked->contains('post_id', $post->id);
+
+        $post = Post::with(['user', 'comments.replies', 'comments.user'])->firstWhere('slug', $slug);
+        $isLiked = Like::where('user_id', Auth::id())->get();
+        $isLiked = $isLiked->contains('post_id', $post->id);
+
         return Inertia::render('DetailPost', [
             'post' => $post,
             'isLogin' => $isLogin,
-            'isLiked' => $liked,
+            'isLiked' => $isLiked,
             'user' => $user,
-            'avatar' => $avatar ?? null,
         ]);
 
     }

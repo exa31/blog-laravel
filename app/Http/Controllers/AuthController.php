@@ -51,10 +51,15 @@ class AuthController extends Controller
             return redirect()->back()->withErrors(['sameEmail' => 'Email already exists'])->withInput();
         }
 
+        $name = $validated['name'];
+        $name = explode(' ', $name);
+        $avatar = strtoupper($name[0][0] . $name[1][0]);
+
         try {
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
+                'avatar' => $avatar,
                 'password' => $validated['password']
             ]);
             Auth::login($user, true);

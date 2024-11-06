@@ -1,8 +1,9 @@
 <script setup>
 import { ref } from 'vue';
 import Reply from './Reply.vue';
+import { formatDateTimeComment } from '../helper';
 
-const props = defineProps(['commentsReply']);
+const props = defineProps(['commentsReply', 'comment']);
 
 const openReply = ref(true);
 const formReply = ref(false);
@@ -22,16 +23,15 @@ const handleFormReply = () => {
             <div class="flex text-start rtl:space-x-reverse">
                 <img class="w-8 h-8 rounded-full me-3" src="https://i.pravatar.cc/150?u=1" alt="Jese image">
                 <div class="flex flex-col text-start rtl:space-x-reverse">
-
-                    <span class="text-sm font-semibold text-gray-900 dark:text-white">Bonnie Green</span>
-                    <span class="text-sm font-normal text-gray-500 dark:text-gray-400">11:46</span>
+                    <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ comment.user.name }}</span>
+                    <span class="text-sm font-normal text-gray-500 dark:text-gray-400">{{ formatDateTimeComment(
+                        comment.updated_at) }}</span>
                 </div>
             </div>
-            <p class="py-2 text-sm font-normal text-gray-900 dark:text-white"> That's awesome. I think our users
-                will really appreciate the improvements.</p>
+            <p class="py-2 text-sm font-normal text-gray-900 dark:text-white"> {{ comment.content }}</p>
             <div
-                :class="'flex mb-2 hover:cursor-pointer ' + (commentsReply ?? 1 === 0 ? 'justify-end' : 'justify-between')">
-                <div v-if="commentsReply ?? 1 > 0" @click="handleReply" class="flex space-x-2">
+                :class="'flex mb-2 hover:cursor-pointer ' + (comment.replies.length > 0 ? 'justify-between' : 'justify-end')">
+                <div v-if="comment.replies.length > 0" @click="handleReply" class="flex space-x-2">
                     <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true"
                         xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
                         viewBox="0 0 24 24">
@@ -64,12 +64,12 @@ const handleFormReply = () => {
                     </form>
                 </div>
             </div>
+            <!-- <Reply v-if="openReply" />
             <Reply v-if="openReply" />
             <Reply v-if="openReply" />
             <Reply v-if="openReply" />
             <Reply v-if="openReply" />
-            <Reply v-if="openReply" />
-            <Reply v-if="openReply" />
+            <Reply v-if="openReply" /> -->
         </div>
     </div>
 </template>

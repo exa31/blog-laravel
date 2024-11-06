@@ -11,16 +11,14 @@ const props = defineProps(
 
 <template>
     <div class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
-        <img class="rounded-t-lg" :src="'storage/' + props.post.image_thumbnail" :alt="props.post.title" />
+        <img class="object-cover rounded-t-lg h-44" :src="'storage/' + props.post.image_thumbnail"
+            :alt="props.post.title" />
         <div class="p-5">
             <div class="flex items-center space-x-1">
-                <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
-                    width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                    <path fill-rule="evenodd"
-                        d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4h-4Z"
-                        clip-rule="evenodd" />
-                </svg>
-
+                <div
+                    class="relative inline-flex items-center justify-center w-6 h-6 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
+                    <span class="font-medium text-gray-600 dark:text-gray-300">{{ props.post.user.avatar }}</span>
+                </div>
                 <h5 class="text-xs text-gray-500">{{ props.post.user.name }}</h5>
             </div>
             <a href="#">

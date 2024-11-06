@@ -8,6 +8,7 @@ const isLogin = ref(props.isLogin);
 
 const logout = () => {
     router.post('/logout');
+    window.location.reload();
     isLogin.value = false;
 }
 
@@ -25,10 +26,10 @@ const logout = () => {
                     <button type="button" @click="logout"
                         class="px-4 py-2 text-sm font-medium text-center text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 dark:bg-gray-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
                         Logout</button>
-                    <div v-if="props.avatar"
+                    <a href="/dashboard" v-if="props.isLogin"
                         class="relative inline-flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
-                        <span class="font-medium text-gray-600 dark:text-gray-300">{{ props.avatar }}</span>
-                    </div>
+                        <span class="font-medium text-gray-600 dark:text-gray-300">{{ props.user.avatar }}</span>
+                    </a>
                 </div>
                 <div v-else class="flex space-x-6 md:order-2 ">
                     <Link href="/login" type="button"
