@@ -21,10 +21,8 @@ const props = defineProps(
                 </div>
                 <h5 class="text-xs text-gray-500">{{ props.post.user.name }}</h5>
             </div>
-            <a href="#">
-                <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ props.post.title }}
-                </h5>
-            </a>
+            <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ props.post.title }}
+            </h5>
             <article v-html="props.post.content" class="mb-3 font-normal text-gray-700 line-clamp-3 dark:text-gray-400">
             </article>
             <Link :href="'/post/' + props.post.slug"

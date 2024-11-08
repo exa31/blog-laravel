@@ -15,7 +15,7 @@ const logout = () => {
 </script>
 
 <template>
-    <main>
+    <main class="min-h-screen">
         <nav
             class="sticky top-0 z-20 w-full bg-white border-b border-gray-200 dark:bg-gray-900 start-0 dark:border-gray-600">
             <div class="flex flex-wrap items-center justify-between max-w-screen-xl p-4 mx-auto ">
@@ -41,7 +41,7 @@ const logout = () => {
                 </div>
             </div>
         </nav>
-        <div class="container relative mx-auto">
+        <div class="container min-h-screen pt-4 mx-auto">
             <slot />
         </div>
         <Footer />

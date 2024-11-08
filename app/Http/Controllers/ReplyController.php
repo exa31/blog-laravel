@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Reply;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ReplyController extends Controller
 {
@@ -28,7 +29,20 @@ class ReplyController extends Controller
      */
     public function store(Request $request)
     {
-
+        $request->validate([
+            'body' => 'required|min:3',
+            'comment_id' => 'required',
+        ]);
+        try {
+            $reply = Reply::create([
+                'user_id' => Auth::id(),
+                'comment_id' => $request->comment_id,
+                'body' => $request->body,
+            ]);
+            return response()->json(['message' => 'Reply created successfully', 'comment' => $reply], 201);
+        } catch (\Throwable $th) {
+            return response()->json(['message' => 'Failed to create reply ' . $th->getMessage()], 500);
+        }
     }
 
     /**

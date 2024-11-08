@@ -23,6 +23,11 @@ class Comment extends Model
         return $this->hasMany(Reply::class);
     }
 
+    public function getComments($query, $post_id)
+    {
+        return $query->where('post_id', $post_id)->orderBy('created_at', 'desc');
+    }
+
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

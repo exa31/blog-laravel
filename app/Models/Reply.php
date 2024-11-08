@@ -8,6 +8,7 @@ class Reply extends Model
 {
     protected $fillable = ['body', 'user_id', 'comment_id'];
 
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -17,4 +18,9 @@ class Reply extends Model
     {
         return $this->belongsTo(Comment::class);
     }
+
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 }

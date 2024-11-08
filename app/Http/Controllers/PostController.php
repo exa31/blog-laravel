@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Comment;
 use App\Models\Like;
 use App\Models\Post;
 use Illuminate\Http\Request;
@@ -54,12 +55,32 @@ class PostController extends Controller
         $isLogin = Auth::check();
         $user = Auth::user();
 
-        $post = Post::with(['user', 'comments.replies', 'comments.user'])->firstWhere('slug', $slug);
+        $post = Post::with('user')
+            ->firstWhere('slug', $slug);
+
+        // Ambil komentar dengan count replies, sorting, dan limit 5
+        $topComments = Comment::where('post_id', $post->id)
+            ->withCount('replies')
+            ->with([
+                'replies' => function ($query) {
+                    $query->orderBy('created_at', 'desc');
+                },
+                'replies.user',
+                'user',
+            ])
+            ->orderBy('replies_count', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+        // Set top comments ke dalam post
+        $post->setRelation('comments', $topComments);
         $isLiked = Like::where('user_id', Auth::id())->get();
         $isLiked = $isLiked->contains('post_id', $post->id);
+        $totalComments = Comment::where('post_id', $post->id)->count();
 
         return Inertia::render('DetailPost', [
             'post' => $post,
+            'totalComments' => $totalComments,
             'isLogin' => $isLogin,
             'isLiked' => $isLiked,
             'user' => $user,

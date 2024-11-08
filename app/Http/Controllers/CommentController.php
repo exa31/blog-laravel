@@ -35,12 +35,12 @@ class CommentController extends Controller
         ]);
 
         try {
-            Comment::create([
+            $comment = Comment::create([
                 'user_id' => Auth::id(),
                 'post_id' => $request->post_id,
                 'content' => $request->content,
             ]);
-            return response()->json(['message' => 'Comment created successfully'], 201);
+            return response()->json(['message' => 'Comment created successfully', 'comment' => $comment], 201);
         } catch (\Throwable $th) {
             return response()->json(['message' => 'Failed to create comment ' . $th], 500);
         }
@@ -76,5 +76,24 @@ class CommentController extends Controller
     public function destroy(Comment $comment)
     {
         //
+    }
+
+    public function addOnScroll($id)
+    {
+        $comments = Comment::where('post_id', $id)
+            ->withCount('replies')
+            ->with([
+                'replies' => function ($query) {
+                    $query->orderBy('created_at', 'desc');
+                },
+                'replies.user',
+                'user',
+            ])
+            ->orderBy('replies_count', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->skip(request()->skip)
+            ->get();
+        return response()->json(['comments' => $comments], 200);
     }
 }

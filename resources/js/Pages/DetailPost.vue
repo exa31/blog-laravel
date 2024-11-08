@@ -15,38 +15,50 @@ const handleLike = async () => {
     router.visit('/login');
     return;
 }
-console.log(props.post);
+
 const sideComment = ref(false);
 
-const handleComment = () => {
+const handleComment = (e) => {
+    e.stopPropagation();
     if (props.isLogin) {
         return sideComment.value = !sideComment.value;
     }
     router.visit('/login');
     return;
 }
+console.log(props);
+const addComments = (comments) => {
+    props.post.comments.unshift(comments);
+    props.totalComments++;
+}
+
+const updateComments = (comments) => {
+    props.post.comments.push(comments);
+}
+
 
 </script>
 
 <template>
     <main>
         <SidebarComments v-if="props.isLogin" v-model:sideComment="sideComment" :comments="props.post.comments"
-            :user="props.user" :idPost="props.post.id" />
+            :user="props.user" @updateComments="updateComments" @addComments="addComments"
+            :totalComments="props.totalComments" :idPost="props.post.id" />
 
         <Head>
             <title>{{ props.post.slug }}</title>
         </Head>
-        <div class="max-w-3xl mx-auto">
+        <div @click.stop="() => sideComment = false" class="max-w-3xl mx-auto">
             <div class="mb-5">
                 <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ props.post.title }}</h1>
                 <div class="flex items-center my-4">
-                    <svg class="text-gray-800 w-14 h-14 dark:text-white" aria-hidden="true"
-                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
-                        viewBox="0 0 24 24">
-                        <path fill-rule="evenodd"
-                            d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4h-4Z"
-                            clip-rule="evenodd" />
-                    </svg>
+
+                    <div
+                        class="relative inline-flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
+                        <span class="font-medium text-gray-600 dark:text-gray-300">{{ props.post.user.avatar
+                            }}</span>
+                    </div>
+
                     <div>
                         <h4 class="font-semibold">{{ props.post.user.name }}</h4>
                         <p class="text-gray-500 dark:text-gray-400">{{ formatDateTime(props.post.created_at) }}</p>
@@ -77,7 +89,7 @@ const handleComment = () => {
                             d="M8.023 17.215c.033-.03.066-.062.098-.094L10.243 15H15a3 3 0 0 0 3-3V8h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1v2a1 1 0 0 1-1.707.707L14.586 18H9a1 1 0 0 1-.977-.785Z"
                             clip-rule="evenodd" />
                     </svg>
-                    <p>{{ props.post.comments.length }}</p>
+                    <p>{{ props.totalComments }}</p>
                 </div>
             </div>
             <img class="object-cover w-full rounded-lg h-96" :src="`/storage/${props.post.image_thumbnail}`"
