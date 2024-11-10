@@ -53,7 +53,7 @@ class AuthController extends Controller
 
         $name = $validated['name'];
         $name = explode(' ', $name);
-        $avatar = strtoupper($name[0][0] . $name[1][0]);
+        $avatar = strtoupper($name[0][0] . ($name[1][0] ?? ''));
 
         try {
             $user = User::create([

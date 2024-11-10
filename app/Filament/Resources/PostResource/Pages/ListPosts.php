@@ -28,7 +28,6 @@ class ListPosts extends ListRecords
         return $table
             ->columns([
                 TextColumn::make('title'),
-                TextColumn::make('content')->html()->lineClamp(1),
                 TextColumn::make('status'),
                 TextColumn::make('created_at')->dateTime(),
                 TextColumn::make('updated_at')->dateTime(),

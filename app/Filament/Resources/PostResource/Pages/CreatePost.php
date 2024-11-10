@@ -7,6 +7,7 @@ use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
@@ -27,6 +28,15 @@ class CreatePost extends CreateRecord
                     ->directory('images')
                     ->required(),
                 RichEditor::make('content')->required(),
+                ToggleButtons::make('status')
+                    ->options([
+                        'draft' => 'Draft',
+                        'published' => 'Published',
+                    ])
+                    ->default('draft')
+                    ->inline()
+                    ->required(),
+
             ])
             ->columns(1);
     }

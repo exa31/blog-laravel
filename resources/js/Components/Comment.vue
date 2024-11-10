@@ -62,7 +62,7 @@ const handleFormReply = () => {
                 </div>
             </div>
             <p class="py-2 text-sm font-normal text-gray-900 dark:text-white"> {{ comment.content }}</p>
-            <div
+            <div v-if="comment.id"
                 :class="'flex mb-2 hover:cursor-pointer ' + (comment.replies.length > 0 ? 'justify-between' : 'justify-end')">
                 <div v-if="comment.replies.length > 0" @click="handleReply" class="flex space-x-2">
                     <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true"

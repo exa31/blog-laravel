@@ -3,15 +3,19 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\LikeController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ReplyController;
+use App\Http\Controllers\SavePostController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PostController::class, 'index'])->name('home');
 
+Route::get('/posts/on-scroll', [PostController::class, 'addOnScroll'])->name('addOnScroll');
+
 Route::get('/post/{slug}', [PostController::class, 'show'])->name('showPost');
 
-Route::post('/like/{id}', [PostController::class, 'like'])->name('likePost')->middleware('auth');
+Route::post('/like/{id}', [LikeController::class, 'like'])->name('likePost')->middleware('auth');
 
 Route::get('/login', [AuthController::class, 'login'])->name('login');
 
@@ -32,3 +36,7 @@ Route::post('/comments', [CommentController::class, 'store'])->name('commentsPos
 Route::get('/comments/{id}/on-scroll', [CommentController::class, 'addOnScroll'])->name('addCommentsOnScroll');
 
 Route::post('/comments/replies', [ReplyController::class, 'store'])->name('repliesPost')->middleware('auth');
+
+Route::post('/save-post', [SavePostController::class, 'store'])->name('savePost')->middleware('auth');
+
+Route::delete('/save-post/{id}', [SavePostController::class, 'destroy'])->name('savePost')->middleware('auth');

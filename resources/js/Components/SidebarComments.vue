@@ -53,7 +53,7 @@ const submitComment = async () => {
 
 
 const close = () => {
-    sideComment.value = false;
+    emits('update:sideComment', false);
 }
 
 const onScroll = async (e) => {
@@ -61,7 +61,7 @@ const onScroll = async (e) => {
         if (props.comments.length === props.totalComments) {
             return;
         }
-        const res = await axios.get(`/comments/${props.idPost}/on-scroll?skip=${props.comments.length}`).then(res => {
+        const res = axios.get(`/comments/${props.idPost}/on-scroll?skip=${props.comments.length}`).then(res => {
             res.data.comments.forEach(comment => {
                 emits('updateComments', comment);
             });

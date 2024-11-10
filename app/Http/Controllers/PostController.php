@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Comment;
 use App\Models\Like;
 use App\Models\Post;
+use App\Models\SavePost;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,17 +19,34 @@ class PostController extends Controller
     public function index()
     {
         $isLogin = Auth::check();
-
         $user = Auth::user();
-
-        $post = Post::with('user')->get();
-
+        $q = request()->query('q');
+        $totalPosts = Post::where(DB::raw('LOWER(title)'), 'LIKE', '%' . strtolower($q) . '%')->with('user')->count();
+        $posts = Post::where(DB::raw('LOWER(title)'), 'LIKE', '%' . strtolower($q) . '%')->with('user')->take(5)->get();
+        $savedPosts = SavePost::where('user_id', Auth::id())->select(['post_id'])->get();
 
         return Inertia::render('Home', [
-            'posts' => $post,
+            'posts' => $posts,
             'user' => $user,
             'isLogin' => $isLogin,
+            'totalPosts' => $totalPosts,
+            'query' => $q ?? '',
+            'savedPosts' => $savedPosts,
         ]);
+    }
+
+    public function addOnScroll()
+    {
+        $q = request()->query('q');
+        $skip = request()->query('skip');
+        $posts = Post::where(DB::raw('LOWER(title)'), 'LIKE', '%' . strtolower($q) . '%')->with('user')->take(5)
+            ->skip($skip)
+            ->get();
+
+        return response()->json([
+            'posts' => $posts,
+        ], 200);
+
     }
 
     /**
@@ -54,7 +72,9 @@ class PostController extends Controller
     {
         $isLogin = Auth::check();
         $user = Auth::user();
-
+        $isSaved = SavePost::whereHas('post', function ($query) use ($slug) {
+            $query->where('slug', $slug);
+        })->where('user_id', Auth::id())->exists();
         $post = Post::with('user')
             ->firstWhere('slug', $slug);
 
@@ -83,6 +103,7 @@ class PostController extends Controller
             'totalComments' => $totalComments,
             'isLogin' => $isLogin,
             'isLiked' => $isLiked,
+            'isSaved' => $isSaved,
             'user' => $user,
         ]);
 
@@ -102,51 +123,6 @@ class PostController extends Controller
     public function update(Request $request, string $id)
     {
         //
-    }
-
-    public function like(Request $request)
-    {
-        $existLike = Like::where('user_id', Auth::id())->where('post_id', $request->id)->first();
-        if ($existLike) {
-            DB::beginTransaction();
-            try {
-                $existLike->delete();
-                $post = Post::find($request->id);
-                $post->decrement('like');
-                DB::commit();
-                return response()->json([
-                    'message' => 'Success to unlike post',
-                    'like' => $post->like,
-                    'isLiked' => false
-                ], 200);
-            } catch (\Throwable $th) {
-                DB::rollBack();
-                return response()->json([
-                    'message' => $th->getMessage()
-                ], 500);
-            }
-        } else {
-            DB::beginTransaction();
-            try {
-                Like::create([
-                    'user_id' => Auth::id(),
-                    'post_id' => $request->id
-                ]);
-                $post = Post::find($request->id);
-                $post->increment('like');
-                DB::commit();
-                return response()->json([
-                    'message' => 'Success to like post',
-                    'like' => $post->like,
-                    'isLiked' => true
-                ], 200);
-            } catch (\Throwable $th) {
-                DB::rollBack();
-                return response()->json([
-                    'message' => 'Failed to like post t' . $th->getMessage()
-                ], 500);
-            }
-        }
     }
 
     /**
