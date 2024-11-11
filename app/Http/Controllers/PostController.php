@@ -21,8 +21,8 @@ class PostController extends Controller
         $isLogin = Auth::check();
         $user = Auth::user();
         $q = request()->query('q');
-        $totalPosts = Post::where(DB::raw('LOWER(title)'), 'LIKE', '%' . strtolower($q) . '%')->with('user')->count();
-        $posts = Post::where(DB::raw('LOWER(title)'), 'LIKE', '%' . strtolower($q) . '%')->with('user')->take(5)->get();
+        $totalPosts = Post::where(DB::raw('LOWER(title)'), 'LIKE', '%' . strtolower($q) . '%')->where('status', 'published')->with('user')->count();
+        $posts = Post::with('user')->searchByQuery($q)->published()->newPost()->populerByCommnet()->populerByLike()->take(12)->get();
         $savedPosts = SavePost::where('user_id', Auth::id())->select(['post_id'])->get();
 
         return Inertia::render('Home', [
@@ -39,14 +39,13 @@ class PostController extends Controller
     {
         $q = request()->query('q');
         $skip = request()->query('skip');
-        $posts = Post::where(DB::raw('LOWER(title)'), 'LIKE', '%' . strtolower($q) . '%')->with('user')->take(5)
+        $posts = Post::where(DB::raw('LOWER(title)'), 'LIKE', '%' . strtolower($q) . '%')->where('status', 'published')->with('user')->take(5)
             ->skip($skip)
             ->get();
 
         return response()->json([
             'posts' => $posts,
         ], 200);
-
     }
 
     /**

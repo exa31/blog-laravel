@@ -27,7 +27,10 @@ class CreatePost extends CreateRecord
                     ->disk('public')
                     ->directory('images')
                     ->required(),
-                RichEditor::make('content')->required(),
+                RichEditor::make('content')
+                    ->fileAttachmentsDisk('public')
+                    ->fileAttachmentsDirectory('attachments')
+                    ->required(),
                 ToggleButtons::make('status')
                     ->options([
                         'draft' => 'Draft',

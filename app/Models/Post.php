@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Post extends Model
 {
@@ -18,6 +19,35 @@ class Post extends Model
         return $this->hasMany(Comment::class);
     }
 
+    public function likes()
+    {
+        return $this->hasMany(Like::class);
+    }
+
+    public function scopeSearchByQuery($query, $q)
+    {
+        return $query->where(DB::raw('LOWER(title)'), 'LIKE', '%' . strtolower($q) . '%');
+    }
+
+    public function scopePopulerByCommnet($query)
+    {
+        return $query->withCount('comments')->orderBy('comments_count', 'desc');
+    }
+
+    public function scopePopulerByLike($query)
+    {
+        return $query->withCount('likes')->orderBy('likes_count', 'desc');
+    }
+
+    public function scopePublished($query)
+    {
+        return $query->where('status', 'published');
+    }
+
+    public function scopeNewPost($query)
+    {
+        return $query->orderBy('updated_at', 'desc');
+    }
 
     protected $casts = [
         'created_at' => 'datetime',

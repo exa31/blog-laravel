@@ -3,7 +3,7 @@ import { usePage, Head, router } from '@inertiajs/vue3';
 import { formatDateTime } from '../helper/index';
 import SidebarComments from '../Components/SidebarComments.vue';
 import axios from 'axios';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = usePage().props;
 const handleLike = async () => {
@@ -15,8 +15,6 @@ const handleLike = async () => {
     router.visit('/login');
     return;
 }
-
-console.log(props);
 
 const sideComment = ref(false);
 
@@ -65,6 +63,13 @@ const deleteSave = (id) => {
         });
 }
 
+const titleHead = computed(() => {
+    const propsTitle = props.post.slug;
+    const title = propsTitle.replace(propsTitle.charAt(0), propsTitle.charAt(0).toUpperCase());
+    return title;
+
+});
+
 </script>
 
 <template>
@@ -74,7 +79,7 @@ const deleteSave = (id) => {
             :totalComments="props.totalComments" :idPost="props.post.id" />
 
         <Head>
-            <title>{{ props.post.slug }}</title>
+            <title>{{ titleHead }}</title>
         </Head>
         <div @click.stop="() => sideComment = false" class="max-w-3xl mx-auto">
             <div class="mb-5">
@@ -133,14 +138,15 @@ const deleteSave = (id) => {
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="m17 21-5-4-5 4V3.889a.92.92 0 0 1 .244-.629.808.808 0 0 1 .59-.26h8.333a.81.81 0 0 1 .589.26.92.92 0 0 1 .244.63V21Z" />
                     </svg>
-                    <svg @click="copyLinkPost" class="text-gray-800 w-7 h-7 dark:text-white" aria-hidden="true"
-                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <svg @click="copyLinkPost" class="text-gray-800 w-7 h-7 dark:text-white hover:cursor-pointer"
+                        aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                        viewBox="0 0 24 24">
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M13.213 9.787a3.391 3.391 0 0 0-4.795 0l-3.425 3.426a3.39 3.39 0 0 0 4.795 4.794l.321-.304m-.321-4.49a3.39 3.39 0 0 0 4.795 0l3.424-3.426a3.39 3.39 0 0 0-4.794-4.795l-1.028.961" />
                     </svg>
                 </div>
             </div>
-            <img class="object-cover w-full rounded-lg h-96" :src="`/storage/${props.post.image_thumbnail}`"
+            <img class="object-contain w-full rounded-lg h-96" :src="`/storage/${props.post.image_thumbnail}`"
                 :alt="props.post.title" />
             <div class="mt-5 text-lg text-gray-700 dark:text-gray-300">
                 <article v-html="props.post.content" class="prose"></article>

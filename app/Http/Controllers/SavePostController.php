@@ -6,6 +6,7 @@ use App\Models\SavePost;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class SavePostController extends Controller
 {
@@ -14,7 +15,27 @@ class SavePostController extends Controller
      */
     public function index()
     {
-        //
+        $isLogin = Auth::check();
+        $user = Auth::user();
+        $savedPosts = SavePost::with(['post', 'post.user'])->where('user_id', Auth::id())->take(12)->get();
+        $totalPosts = SavePost::where('user_id', Auth::id())->count();
+        return Inertia::render('SavePost', [
+            'savedPosts' => $savedPosts,
+            'user' => $user,
+            'isLogin' => $isLogin,
+            'posts' => $savedPosts,
+            'totalPosts' => $totalPosts,
+        ]);
+    }
+
+    public function addOnScroll()
+    {
+        $skip = request()->query('skip');
+        $savedPosts = SavePost::with(['post', 'post.user'])->where('user_id', Auth::id())->take(12)->skip($skip)->get();
+
+        return response()->json([
+            'posts' => $savedPosts,
+        ], 200);
     }
 
     /**

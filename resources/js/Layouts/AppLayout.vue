@@ -62,14 +62,40 @@ const submitSearch = (e) => {
                                 d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                     </button>
-                    <div v-if="isLogin" class="space-x-4">
-                        <button type="button" @click="logout"
-                            class="px-4 py-2 text-sm font-medium text-center text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 dark:bg-gray-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                            Logout</button>
-                        <a href="/dashboard" v-if="props.isLogin"
-                            class="relative inline-flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
-                            <span class="font-medium text-gray-600 dark:text-gray-300">{{ props.user.avatar }}</span>
-                        </a>
+                    <div v-if="isLogin" class="flex space-x-4">
+                        <button id="dropdownUserAvatarButton" data-dropdown-toggle="dropdownAvatar"
+                            class="flex p-2 text-sm rounded-full bg-slate-200 md:me-0 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
+                            type="button">
+                            <span class="sr-only">Open user menu</span>
+                            <span class="text-2xl font-semibold text-gray-600 dark:text-gray-300">{{ props.user.avatar
+                                }}</span>
+                        </button>
+                        <!-- Dropdown menu -->
+                        <div id="dropdownAvatar"
+                            class="z-10 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-44 dark:bg-gray-700 dark:divide-gray-600">
+                            <div class="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                <div>{{ props.user.name }}</div>
+                                <div class="font-medium truncate">{{ props.user.email }}</div>
+                            </div>
+                            <ul class="py-2 text-sm text-gray-700 dark:text-gray-200"
+                                aria-labelledby="dropdownUserAvatarButton">
+                                <li>
+                                    <a href="/dashboard"
+                                        class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Dashboard</a>
+                                </li>
+                                <li>
+                                    <Link href="/save-posts"
+                                        class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">
+                                    Save
+                                    Post</Link>
+                                </li>
+                            </ul>
+                            <div class="px-4 py-2 mx-auto">
+                                <button type="button" @click="logout"
+                                    class="px-4 py-2 mx-auto text-sm font-medium text-center text-white bg-gray-700 rounded-lg hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 dark:bg-gray-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                                    Logout</button>
+                            </div>
+                        </div>
                     </div>
                     <div v-else class="flex space-x-6 md:order-2 ">
                         <Link href="/login" type="button"
