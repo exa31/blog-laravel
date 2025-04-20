@@ -73,6 +73,9 @@ class AuthController extends Controller
     public function logout()
     {
         Auth::logout();
+        // Menghancurkan sesi
+        session()->invalidate();
+        session()->regenerateToken();
         return;
     }
 }

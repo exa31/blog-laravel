@@ -41,6 +41,10 @@ const copyLinkPost = () => {
 }
 
 const save = (id) => {
+    if (!props.isLogin) {
+        router.visit('/login');
+        return;
+    }
     axios.post('/save-post', {
         post_id: id
     })
