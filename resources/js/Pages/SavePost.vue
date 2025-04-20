@@ -1,7 +1,7 @@
 <script setup>
-import { Link, usePage } from '@inertiajs/vue3';
+import {Link, router, usePage} from '@inertiajs/vue3';
 import CardBlog from '../Components/CardBlog.vue';
-import { onMounted } from 'vue';
+import {onMounted} from 'vue';
 
 const props = usePage().props;
 
@@ -17,6 +17,9 @@ const handleScroll = async (e) => {
         axios.get(`/save-posts/on-scroll?skip=${props.posts.length}`).then(res => {
             props.posts.push(...res.data.posts);
         }).catch(err => {
+            if (err.response.status === 401) {
+                router.visit('/login');
+            }
             console.log(err);
         });
     }
@@ -29,6 +32,9 @@ const deleteSave = (id) => {
             props.totalPosts = props.totalPosts - 1;
         })
         .catch(error => {
+            if (error.response.status === 401) {
+                router.visit('/login');
+            }
             console.log(error);
         });
 }
@@ -43,11 +49,11 @@ const deleteSave = (id) => {
         </p>
         <div class="mt-4 text-center">
             <Link href="/" class="px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-700">
-            Go to Home
+                Go to Home
             </Link>
         </div>
     </div>
     <div @scroll="handleScroll" v-else class="grid gap-8 mx-auto sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-        <CardBlog v-for="(post, index) in props.posts" :key="index" :post="post.post" @deleteSave="deleteSave" />
+        <CardBlog v-for="(post, index) in props.posts" :key="index" :post="post.post" @deleteSave="deleteSave"/>
     </div>
 </template>

@@ -1,8 +1,9 @@
 <script setup>
 import {router, usePage} from '@inertiajs/vue3';
 import CardBlog from '../Components/CardBlog.vue';
-import { onMounted } from 'vue';
+import {onMounted} from 'vue';
 import axios from 'axios';
+
 const props = usePage().props;
 
 const handleScroll = async (e) => {
@@ -13,6 +14,9 @@ const handleScroll = async (e) => {
         axios.get(`/posts/on-scroll?skip=${props.posts.length}&q=${props.query}`).then(res => {
             props.posts.push(...res.data.posts);
         }).catch(err => {
+            if (err.response.status === 401) {
+                router.visit('/login');
+            }
             console.log(err);
         });
     }
@@ -31,10 +35,13 @@ const save = (id) => {
         post_id: id
     })
         .then(response => {
-            props.savedPosts.push({ post_id: id });
+            props.savedPosts.push({post_id: id});
 
         })
         .catch(error => {
+            if (error.response.status === 401) {
+                router.visit('/login');
+            }
             console.log(error);
         });
 }
@@ -45,6 +52,9 @@ const deleteSave = (id) => {
             props.savedPosts = props.savedPosts.filter(post => post.post_id !== id);
         })
         .catch(error => {
+            if (error.response.status === 401) {
+                router.visit('/login');
+            }
             console.log(error);
         });
 }
@@ -58,8 +68,9 @@ const deleteSave = (id) => {
             <span class="text-sm text-gray-500">Please check back later or try a different search.</span>
         </p>
     </div>
-    <div @scroll="handleScroll" v-else class="grid gap-8 mx-auto sm:grid-cols-2 grid-cols-1 lg:grid-cols-3 2xl:grid-cols-4">
+    <div @scroll="handleScroll" v-else
+         class="grid gap-8 mx-auto sm:grid-cols-2 grid-cols-1 lg:grid-cols-3 2xl:grid-cols-4">
         <CardBlog v-for="(post, index) in props.posts" :key="index" :post="post" :save="props.savedPosts"
-            @deleteSave="deleteSave" @save="save" />
+                  @deleteSave="deleteSave" @save="save"/>
     </div>
 </template>
