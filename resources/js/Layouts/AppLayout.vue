@@ -10,10 +10,14 @@ const isLogin = ref(props.isLogin);
 const openSearch = ref(false);
 const lastSearch = ref('');
 
-const logout = () => {
-    router.post('/logout');
-    window.location.reload();
-    isLogin.value = false;
+const logout = async () => {
+    router.post('/logout', {
+    }, {
+        onSuccess: () => {
+            isLogin.value = false;
+            window.location.reload();
+        }
+    });
 }
 
 const handleClick = () => {
@@ -66,7 +70,6 @@ const submitSearch = (e) => {
                         <button id="dropdownUserAvatarButton" data-dropdown-toggle="dropdownAvatar"
                             class="flex p-2 text-sm rounded-full bg-slate-200 md:me-0 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
                             type="button">
-                            <span class="sr-only">Open user menu</span>
                             <span class="text-2xl font-semibold text-gray-600 dark:text-gray-300">{{ props.user.avatar
                                 }}</span>
                         </button>

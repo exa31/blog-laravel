@@ -58,7 +58,7 @@ const deleteSave = (id) => {
             <span class="text-sm text-gray-500">Please check back later or try a different search.</span>
         </p>
     </div>
-    <div @scroll="handleScroll" v-else class="grid gap-8 mx-auto sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+    <div @scroll="handleScroll" v-else class="grid gap-8 mx-auto sm:grid-cols-2 grid-cols-1 lg:grid-cols-3 2xl:grid-cols-4">
         <CardBlog v-for="(post, index) in props.posts" :key="index" :post="post" :save="props.savedPosts"
             @deleteSave="deleteSave" @save="save" />
     </div>
