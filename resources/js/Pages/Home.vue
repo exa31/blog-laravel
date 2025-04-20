@@ -1,5 +1,5 @@
 <script setup>
-import { usePage } from '@inertiajs/vue3';
+import {router, usePage} from '@inertiajs/vue3';
 import CardBlog from '../Components/CardBlog.vue';
 import { onMounted } from 'vue';
 import axios from 'axios';
@@ -23,6 +23,10 @@ onMounted(() => {
 });
 
 const save = (id) => {
+    if (!props.isLogin) {
+        router.visit('/login');
+        return;
+    }
     axios.post('/save-post', {
         post_id: id
     })
