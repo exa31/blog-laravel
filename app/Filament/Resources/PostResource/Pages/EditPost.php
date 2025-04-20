@@ -4,6 +4,7 @@ namespace App\Filament\Resources\PostResource\Pages;
 
 use App\Filament\Resources\PostResource;
 use App\Models\Post;
+use App\Models\SavePost;
 use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
@@ -11,9 +12,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use PhpParser\Node\Stmt\Switch_;
 
 class EditPost extends EditRecord
 {
@@ -57,7 +56,7 @@ class EditPost extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->before(
-                    // yg di comment itu cara ngecek pake regex
+                // yg di comment itu cara ngecek pake regex
                     function ($record) {
                         $oldImageThumbnail = explode('/', $record->image_thumbnail);
                         // $oldFileAttachment = $record->content;
@@ -82,10 +81,8 @@ class EditPost extends EditRecord
     }
 
 
-
     protected function mutateFormDataBeforeSave(array $data): array
     {
-
         $lastPost = Post::firstWhere('id', $this->record->id);
         if ($lastPost->image_thumbnail !== $data['image_thumbnail']) {
             $oldImageThumbnail = explode('/', $lastPost->image_thumbnail);
@@ -94,8 +91,13 @@ class EditPost extends EditRecord
                 Storage::disk('public')->delete('images/' . $oldImageThumbnail[1]);
             }
         }
+        if ($data['status'] === 'draft') {
+            SavePost::where('post_id', $this->record->id)
+                ->delete();
+        }
         return $data;
     }
+
     protected function getRecordId(): int
     {
         return $this->record->id;
