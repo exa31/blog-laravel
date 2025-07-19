@@ -54,10 +54,11 @@ RUN curl -sS https://getcomposer.org/installer | php && \
 # Set permission Laravel
 RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
 
-# Copy konfigurasi Caddy (FrankenPHP)
-COPY frankenphp.conf /etc/caddy/Caddyfile
+# 🟢 Simpan Caddyfile di lokasi aman
+COPY frankenphp.conf /app/Caddyfile
 
+# Start script
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
-ENTRYPOINT ["/start.sh"]
 
+ENTRYPOINT ["/start.sh"]
