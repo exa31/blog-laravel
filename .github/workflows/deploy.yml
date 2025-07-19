@@ -1,0 +1,40 @@
+name: Build & Deploy Laravel to VPS via GHCR
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/e-blog:latest .
+
+      - name: Push Docker image to GHCR
+        run: docker push ghcr.io/${{ github.repository_owner }}/e-blog:latest
+
+      - name: Deploy to VPS
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p 31086 -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+          ssh -p 31086 -i ~/.ssh/id_ed25519 deploy@${{ secrets.VPS_HOST }} << 'EOF'
+            docker login ghcr.io -u ${{ github.repository_owner }} -p '${{ secrets.GHCR_TOKEN }}'
+            docker pull ghcr.io/${{ github.repository_owner }}/e-blog:latest
+            docker stop e-blog || true && docker rm e-blog || true
+            docker run -d --name e-blog -p 3002:8000 \
+            -v $(pwd)/frankenphp.conf:/etc/caddy/Caddyfile \
+            -v $(pwd):/app \
+            ghcr.io/${{ github.repository_owner }}/e-blog:latest
+          EOF

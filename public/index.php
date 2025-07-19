@@ -1,17 +1,30 @@
 <?php
 
-use Illuminate\Http\Request;
+// FrankenPHP runtime handler
+if (function_exists('frankenphp_handle_request')) {
+    frankenphp_handle_request(function () {
+        require __DIR__ . '/../vendor/autoload.php';
+        $app = require_once __DIR__ . '/../bootstrap/app.php';
 
-define('LARAVEL_START', microtime(true));
+        $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 
-// Determine if the application is in maintenance mode...
-if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
-    require $maintenance;
+        $response = $kernel->handle(
+            $request = Illuminate\Http\Request::capture()
+        )->send();
+
+        $kernel->terminate($request, $response);
+    });
+    return;
 }
 
-// Register the Composer autoloader...
-require __DIR__.'/../vendor/autoload.php';
+// Fallback biasa
+require __DIR__ . '/../vendor/autoload.php';
+$app = require_once __DIR__ . '/../bootstrap/app.php';
 
-// Bootstrap Laravel and handle the request...
-(require_once __DIR__.'/../bootstrap/app.php')
-    ->handleRequest(Request::capture());
+$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+
+$response = $kernel->handle(
+    $request = Illuminate\Http\Request::capture()
+)->send();
+
+$kernel->terminate($request, $response);
