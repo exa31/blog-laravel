@@ -35,6 +35,5 @@ jobs:
             docker stop e-blog || true && docker rm e-blog || true
             docker run -d --name e-blog -p 3002:8000 \
             -v $(pwd)/frankenphp.conf:/etc/caddy/Caddyfile \
-            -v $(pwd):/app \
             ghcr.io/${{ github.repository_owner }}/e-blog:latest
           EOF
