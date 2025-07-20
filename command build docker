@@ -3,4 +3,4 @@ docker build -t laravel-frankenphp .
 
 
 / after building the Docker image, you can run it with the following command:
->docker run --rm -it -p 8080:8000 -v "%cd%\frankenphp.conf:/etc/caddy/Caddyfile" -v "%cd%:/app" laravel-frankenphp
+>docker run --rm -it -p 8080:8000 laravel-frankenphp

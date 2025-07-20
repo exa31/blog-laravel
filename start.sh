@@ -13,5 +13,8 @@ echo "Mengatur permission..."
 chown -R www-data:www-data /app/storage /app/public/storage /app/bootstrap/cache
 
 # Jalankan Laravel Octane dengan FrankenPHP
-echo "Menjalankan Laravel Octane dengan FrankenPHP..."
-php artisan octane:frankenphp
+echo "Menjalankan Laravel dengan octane FrankenPHP..."
+#php artisan octane:frankenphp
+php artisan octane:start --server=frankenphp --log-level=debug
+
+
