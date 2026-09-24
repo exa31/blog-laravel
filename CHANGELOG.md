@@ -1,3 +1,10 @@
+## [1.9.1](https://github.com/exa31/blog-laravel/compare/v1.9.0...v1.9.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **mail:** use native http client for resend api with verbose debug logging ([25e75a8](https://github.com/exa31/blog-laravel/commit/25e75a8f0e0c738db7077f8b466d1e7ba2891810))
+
 # [1.9.0](https://github.com/exa31/blog-laravel/compare/v1.8.2...v1.9.0) (2026-09-24)
 
 
