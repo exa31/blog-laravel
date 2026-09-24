@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -288,6 +289,17 @@ class AuthController extends Controller
             return redirect()->route('login')->with('message', 'Your email is already verified. Please log in.');
         }
 
+        $dailyKey = 'verify-resend-daily:'.strtolower($validated['email']);
+
+        // Daily limit: 3 times per day
+        if (RateLimiter::tooManyAttempts($dailyKey, 3)) {
+            $limitMsg = 'You have reached the maximum limit of 3 verification code requests per day. Please try again tomorrow.';
+            if ($request->wantsJson()) {
+                return response()->json(['message' => $limitMsg], 429);
+            }
+            return redirect()->back()->withErrors(['invalid' => $limitMsg]);
+        }
+
         $lastRecord = DB::table('email_verification_codes')->where('email', $validated['email'])->first();
 
         // Rate limit: 60 seconds cooldown
@@ -307,6 +319,8 @@ class AuthController extends Controller
                 'created_at' => now(),
             ]
         );
+
+        RateLimiter::hit($dailyKey, 86400);
 
         $this->resendMailService->sendVerificationCodeEmail($user, $code);
 
@@ -428,6 +442,17 @@ class AuthController extends Controller
         $user = User::where('email', $validated['email'])->first();
 
         if ($user) {
+            $dailyKey = 'password-reset-daily:'.strtolower($validated['email']);
+
+            // Daily limit: 3 times per day
+            if (RateLimiter::tooManyAttempts($dailyKey, 3)) {
+                $limitMsg = 'You have reached the maximum limit of 3 password reset requests per day. Please try again tomorrow.';
+                if ($request->wantsJson()) {
+                    return response()->json(['message' => $limitMsg], 429);
+                }
+                return redirect()->back()->withErrors(['invalid' => $limitMsg]);
+            }
+
             $lastRecord = DB::table('password_reset_tokens')->where('email', $user->email)->first();
 
             // Rate limit cooldown: 60 seconds between reset link requests
@@ -451,6 +476,8 @@ class AuthController extends Controller
                     'created_at' => now(),
                 ]
             );
+
+            RateLimiter::hit($dailyKey, 86400);
 
             // Dispatch email via Resend service
             $this->resendMailService->sendPasswordResetEmail($user, $plainToken);

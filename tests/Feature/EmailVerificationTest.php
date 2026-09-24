@@ -16,12 +16,6 @@ class EmailVerificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
-
     public function test_registration_sends_verification_code_and_redirects_to_verify_page(): void
     {
         $mockMailService = Mockery::mock(ResendMailService::class);
@@ -212,5 +206,29 @@ class EmailVerificationTest extends TestCase
 
         $response->assertRedirect(route('verification.notice'));
         $this->assertFalse(Auth::check());
+    }
+
+    public function test_resending_code_enforces_daily_limit_of_three_times(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'daily.otp@example.com',
+            'email_verified_at' => null,
+            'auth_provider' => 'email',
+        ]);
+
+        $dailyKey = 'verify-resend-daily:daily.otp@example.com';
+        \Illuminate\Support\Facades\RateLimiter::hit($dailyKey, 86400);
+        \Illuminate\Support\Facades\RateLimiter::hit($dailyKey, 86400);
+        \Illuminate\Support\Facades\RateLimiter::hit($dailyKey, 86400);
+
+        $mockMailService = Mockery::mock(ResendMailService::class);
+        $mockMailService->shouldNotReceive('sendVerificationCodeEmail');
+        $this->app->instance(ResendMailService::class, $mockMailService);
+
+        $response = $this->post(route('verification.resend'), [
+            'email' => 'daily.otp@example.com',
+        ]);
+
+        $response->assertSessionHasErrors('invalid');
     }
 }

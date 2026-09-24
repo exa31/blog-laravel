@@ -130,4 +130,26 @@ class PasswordResetTest extends TestCase
 
         $response->assertSessionHasErrors(['invalid']);
     }
+
+    public function test_requesting_password_reset_enforces_daily_limit_of_three_times(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'daily.limit@example.com',
+        ]);
+
+        $dailyKey = 'password-reset-daily:daily.limit@example.com';
+        \Illuminate\Support\Facades\RateLimiter::hit($dailyKey, 86400);
+        \Illuminate\Support\Facades\RateLimiter::hit($dailyKey, 86400);
+        \Illuminate\Support\Facades\RateLimiter::hit($dailyKey, 86400);
+
+        $mockMailService = Mockery::mock(ResendMailService::class);
+        $mockMailService->shouldNotReceive('sendPasswordResetEmail');
+        $this->app->instance(ResendMailService::class, $mockMailService);
+
+        $response = $this->post(route('password.email'), [
+            'email' => 'daily.limit@example.com',
+        ]);
+
+        $response->assertSessionHasErrors(['invalid']);
+    }
 }
