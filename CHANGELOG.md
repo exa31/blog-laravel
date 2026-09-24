@@ -1,3 +1,10 @@
+## [1.8.2](https://github.com/exa31/blog-laravel/compare/v1.8.1...v1.8.2) (2026-09-24)
+
+
+### Bug Fixes
+
+* **server:** remove invalid caddyfile override to let octane use native frankenphp worker ([050ceaa](https://github.com/exa31/blog-laravel/commit/050ceaa2789ea912cd4f008564fb9ee7a6030f4c))
+
 ## [1.8.1](https://github.com/exa31/blog-laravel/compare/v1.8.0...v1.8.1) (2026-09-24)
 
 
