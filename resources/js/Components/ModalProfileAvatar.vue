@@ -12,13 +12,19 @@ const props = defineProps({
     },
 });
 
-const emits = defineEmits(['update:modelValue', 'avatarUpdated']);
+const emits = defineEmits(['update:modelValue', 'avatarUpdated', 'userUpdated']);
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user || page.props.user || {});
 
-const activeTab = ref('avatar'); // 'avatar' | 'accounts'
+const activeTab = ref('profile'); // 'profile' | 'accounts'
 
+// Name State
+const nameInput = ref('');
+const nameError = ref('');
+const isUpdatingName = ref(false);
+
+// Avatar State
 const fileInputRef = ref(null);
 const imageSrc = ref(null);
 const isUploading = ref(false);
@@ -36,10 +42,29 @@ const imageDimensions = reactive({ width: 0, height: 0, naturalWidth: 0, natural
 
 const containerSize = 280; // Size of the circular crop viewport in px
 
+// Sync nameInput when modal opens or currentUser updates
+watch(() => props.modelValue, (isOpen) => {
+    if (isOpen) {
+        nameInput.value = currentUser.value?.name || '';
+        nameError.value = '';
+    }
+}, { immediate: true });
+
+watch(currentUser, (newUser) => {
+    if (newUser && !props.modelValue) {
+        nameInput.value = newUser.name || '';
+    }
+});
+
+const isNameChanged = computed(() => {
+    return nameInput.value.trim() !== (currentUser.value?.name || '').trim();
+});
+
 const closeModal = () => {
-    if (isUploading.value || isUnbindingApple.value) return;
+    if (isUploading.value || isUpdatingName.value || isUnbindingApple.value) return;
     emits('update:modelValue', false);
     resetCropper();
+    nameError.value = '';
 };
 
 const resetCropper = () => {
@@ -49,6 +74,56 @@ const resetCropper = () => {
     pan.y = 0;
     if (fileInputRef.value) {
         fileInputRef.value.value = '';
+    }
+};
+
+const saveName = async () => {
+    const trimmedName = nameInput.value.trim();
+    if (!trimmedName) {
+        nameError.value = 'Display name cannot be empty.';
+        return;
+    }
+
+    if (trimmedName.length < 2) {
+        nameError.value = 'Display name must be at least 2 characters.';
+        return;
+    }
+
+    if (trimmedName.length > 100) {
+        nameError.value = 'Display name cannot exceed 100 characters.';
+        return;
+    }
+
+    if (trimmedName === currentUser.value?.name) {
+        return;
+    }
+
+    isUpdatingName.value = true;
+    nameError.value = '';
+
+    try {
+        const res = await axios.patch('/profile/name', {
+            name: trimmedName,
+        });
+
+        if (res.data?.user) {
+            if (page.props.auth?.user) {
+                page.props.auth.user.name = res.data.user.name;
+            }
+            if (page.props.user) {
+                page.props.user.name = res.data.user.name;
+            }
+
+            emits('userUpdated', res.data.user);
+            showToast(res.data.message || 'Display name updated successfully!', 'success');
+            router.reload({ preserveScroll: true });
+        }
+    } catch (err) {
+        const message = err.response?.data?.errors?.name?.[0] || err.response?.data?.message || 'Failed to update name.';
+        nameError.value = message;
+        showToast(message, 'error');
+    } finally {
+        isUpdatingName.value = false;
     }
 };
 
@@ -191,11 +266,10 @@ const saveAvatar = async () => {
                 page.props.user.avatar_url = res.data.user.avatar_url;
             }
             emits('avatarUpdated', res.data.user);
+            emits('userUpdated', res.data.user);
             showToast('Profile picture updated successfully!', 'success');
             
-            emits('update:modelValue', false);
             resetCropper();
-
             router.reload({ preserveScroll: true });
         }
     } catch (err) {
@@ -220,11 +294,10 @@ const removeAvatar = async () => {
             page.props.user.avatar_url = null;
         }
         emits('avatarUpdated', null);
+        emits('userUpdated', { ...(currentUser.value || {}), avatar: null, avatar_url: null });
         showToast('Profile picture removed.', 'success');
         
-        emits('update:modelValue', false);
         resetCropper();
-
         router.reload({ preserveScroll: true });
     } catch (err) {
         showToast('Failed to remove profile picture.', 'error');
@@ -275,17 +348,17 @@ const unbindApple = async () => {
             @touchend="onTouchEnd"
         >
             <div
-                class="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-scale-up"
+                class="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-scale-up"
             >
                 <!-- Modal Header & Tab Navigation -->
-                <div class="px-6 pt-5 pb-0 border-b border-slate-100 dark:border-slate-800">
+                <div class="px-6 pt-5 pb-0 border-b border-slate-100 dark:border-slate-800 shrink-0">
                     <div class="flex items-center justify-between pb-4">
                         <div>
                             <h3 class="text-lg font-bold font-display text-slate-900 dark:text-white">
                                 Account Settings
                             </h3>
                             <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                Manage your profile avatar and connected authentication providers.
+                                Manage your profile name, avatar photo, and connected accounts.
                             </p>
                         </div>
                         <button
@@ -303,18 +376,18 @@ const unbindApple = async () => {
                     <div class="flex items-center gap-6 text-sm font-medium">
                         <button
                             type="button"
-                            @click="activeTab = 'avatar'"
+                            @click="activeTab = 'profile'"
                             :class="[
                                 'pb-3 border-b-2 transition-all flex items-center gap-2',
-                                activeTab === 'avatar'
+                                activeTab === 'profile'
                                     ? 'border-amber-500 text-amber-500 font-semibold'
                                     : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             ]"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
-                            Profile Photo
+                            Profile Details
                         </button>
 
                         <button
@@ -335,282 +408,354 @@ const unbindApple = async () => {
                     </div>
                 </div>
 
-                <!-- Modal Body: Tab 1 (Avatar Cropper) -->
-                <div v-if="activeTab === 'avatar'" class="p-6 space-y-6">
+                <!-- Modal Body (Scrollable) -->
+                <div class="p-6 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
                     
-                    <!-- View 1: Image Dropzone (When No Image Selected) -->
-                    <div
-                        v-if="!imageSrc"
-                        @dragover.prevent="isDraggingOver = true"
-                        @dragleave.prevent="isDraggingOver = false"
-                        @drop.prevent="handleDrop"
-                        :class="[
-                            'flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-2xl transition-all text-center cursor-pointer',
-                            isDraggingOver
-                                ? 'border-amber-500 bg-amber-500/10'
-                                : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 hover:border-amber-500/50 dark:hover:border-amber-500/50'
-                        ]"
-                        @click="() => fileInputRef?.click()"
-                    >
-                        <div class="mb-4">
-                            <UserAvatar :user="currentUser" size="2xl" />
-                        </div>
-
-                        <div class="w-12 h-12 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mb-3">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                        </div>
-
-                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                            Click to upload or drag and drop
-                        </p>
-                        <p class="text-xs text-slate-400 mt-1">
-                            PNG, JPG or WebP (max. 5MB)
-                        </p>
-
-                        <input
-                            ref="fileInputRef"
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            class="hidden"
-                            @change="handleFileSelect"
-                        />
-                    </div>
-
-                    <!-- View 2: Interactive Circular Cropper -->
-                    <div v-else class="space-y-4">
-                        <div class="flex items-center justify-center">
-                            <div
-                                class="relative rounded-full overflow-hidden shadow-2xl border-4 border-amber-500 cursor-grab active:cursor-grabbing select-none touch-none bg-slate-950"
-                                :style="{ width: containerSize + 'px', height: containerSize + 'px' }"
-                                @mousedown="onMouseDown"
-                                @mousemove="onMouseMove"
-                                @mouseup="onMouseUp"
-                                @mouseleave="onMouseUp"
-                                @touchstart="onTouchStart"
-                                @touchmove="onTouchMove"
-                                @touchend="onTouchEnd"
-                            >
-                                <img
-                                    :src="imageSrc"
-                                    alt="Crop target"
-                                    class="absolute pointer-events-none origin-center select-none"
-                                    :style="{
-                                        width: imageDimensions.width + 'px',
-                                        height: imageDimensions.height + 'px',
-                                        left: '50%',
-                                        top: '50%',
-                                        transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${zoom})`,
-                                    }"
-                                    draggable="false"
-                                />
-                                <div class="absolute inset-0 border border-white/20 rounded-full pointer-events-none"></div>
-                            </div>
-                        </div>
-
-                        <p class="text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
-                            </svg>
-                            Drag to reposition photo
-                        </p>
-
-                        <!-- Zoom Slider Controls -->
-                        <div class="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2">
-                            <div class="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                <span class="flex items-center gap-1.5">
-                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                                    </svg>
-                                    Scale & Zoom
+                    <!-- TAB 1: Profile & Avatar Details -->
+                    <div v-if="activeTab === 'profile'" class="space-y-6">
+                        
+                        <!-- Section A: Display Name Edit Card -->
+                        <div class="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <label for="profile-name-input" class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                        Display Name
+                                    </label>
+                                    <p class="text-xs text-slate-400 mt-0.5">
+                                        Your name shown across stories, comments, and interactions.
+                                    </p>
+                                </div>
+                                <span v-if="isNameChanged" class="px-2 py-0.5 text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-full animate-pulse">
+                                    Unsaved Changes
                                 </span>
-                                <span>{{ Math.round(zoom * 100) }}%</span>
                             </div>
 
-                            <div class="flex items-center gap-3">
-                                <button
-                                    type="button"
-                                    @click="zoom = Math.max(minZoom, zoom - 0.2)"
-                                    class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-xs shadow-sm hover:bg-slate-100"
-                                >
-                                    -
-                                </button>
+                            <form @submit.prevent="saveName" class="space-y-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="relative flex-1">
+                                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                        </div>
+                                        <input
+                                            id="profile-name-input"
+                                            v-model="nameInput"
+                                            type="text"
+                                            maxlength="100"
+                                            placeholder="Enter your display name"
+                                            :disabled="isUpdatingName"
+                                            class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all disabled:opacity-60"
+                                            @input="nameError = ''"
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        :disabled="!isNameChanged || !nameInput.trim() || isUpdatingName"
+                                        class="px-4 py-2.5 text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 shrink-0 shadow-sm font-display disabled:opacity-40 disabled:cursor-not-allowed"
+                                        :class="[
+                                            isNameChanged
+                                                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-glow active:scale-95'
+                                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                        ]"
+                                    >
+                                        <svg v-if="isUpdatingName" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>{{ isUpdatingName ? 'Saving...' : 'Save Name' }}</span>
+                                    </button>
+                                </div>
+
+                                <p v-if="nameError" class="text-xs text-rose-500 font-medium">
+                                    {{ nameError }}
+                                </p>
+                            </form>
+                        </div>
+
+                        <!-- Section B: Profile Avatar Cropper & Uploader -->
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                    Profile Picture
+                                </h4>
+                                <p class="text-xs text-slate-400 mt-0.5">
+                                    Upload a custom photo or use your dynamic initials avatar.
+                                </p>
+                            </div>
+
+                            <!-- View B1: Image Dropzone / Preview (When No Image Selected For Crop) -->
+                            <div
+                                v-if="!imageSrc"
+                                @dragover.prevent="isDraggingOver = true"
+                                @dragleave.prevent="isDraggingOver = false"
+                                @drop.prevent="handleDrop"
+                                :class="[
+                                    'flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-2xl transition-all text-center',
+                                    isDraggingOver
+                                        ? 'border-amber-500 bg-amber-500/10'
+                                        : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 hover:border-amber-500/50 dark:hover:border-amber-500/50'
+                                ]"
+                            >
+                                <div class="mb-3">
+                                    <UserAvatar :user="currentUser" size="2xl" />
+                                </div>
+
+                                <div class="flex items-center gap-3 mt-2">
+                                    <button
+                                        type="button"
+                                        @click="() => fileInputRef?.click()"
+                                        class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-all font-display shadow-sm"
+                                    >
+                                        Choose New Photo
+                                    </button>
+
+                                    <button
+                                        v-if="currentUser?.avatar"
+                                        type="button"
+                                        @click="removeAvatar"
+                                        :disabled="isUploading"
+                                        class="px-3.5 py-2 text-xs font-semibold text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all disabled:opacity-50"
+                                    >
+                                        Remove Photo
+                                    </button>
+                                </div>
+
+                                <p class="text-xs text-slate-400 mt-3">
+                                    PNG, JPG or WebP (max. 5MB)
+                                </p>
+
                                 <input
-                                    type="range"
-                                    v-model.number="zoom"
-                                    :min="minZoom"
-                                    :max="maxZoom"
-                                    step="0.05"
-                                    class="w-full accent-amber-500 cursor-pointer"
+                                    ref="fileInputRef"
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    class="hidden"
+                                    @change="handleFileSelect"
                                 />
-                                <button
-                                    type="button"
-                                    @click="zoom = Math.min(maxZoom, zoom + 0.2)"
-                                    class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-xs shadow-sm hover:bg-slate-100"
-                                >
-                                    +
-                                </button>
                             </div>
-                        </div>
 
-                        <!-- Swap File Button -->
-                        <div class="flex justify-center">
-                            <button
-                                type="button"
-                                @click="resetCropper"
-                                class="text-xs text-amber-500 hover:text-amber-600 dark:hover:text-amber-400 font-semibold"
-                            >
-                                Choose another photo
-                            </button>
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- Modal Body: Tab 2 (Connected Accounts) -->
-                <div v-else-if="activeTab === 'accounts'" class="p-6 space-y-5">
-                    
-                    <!-- Account Primary Email Info -->
-                    <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-1">
-                        <p class="text-xs font-medium text-slate-400">Account Primary Email</p>
-                        <p class="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                            {{ currentUser?.email }}
-                        </p>
-                    </div>
-
-                    <!-- Provider 1: Google Account -->
-                    <div class="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between gap-4">
-                        <div class="flex items-center gap-3 min-w-0">
-                            <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                                <svg class="w-5 h-5" viewBox="0 0 24 24">
-                                    <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
-                                    <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
-                                    <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2s.7 5.5 1.9 7.9l3.7-2.9z"/>
-                                    <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
-                                </svg>
-                            </div>
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <h4 class="text-sm font-semibold text-slate-900 dark:text-white">Google</h4>
-                                    <span v-if="currentUser?.has_google_auth" class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                        Connected & Locked
-                                    </span>
+                            <!-- View B2: Interactive Circular Cropper -->
+                            <div v-else class="space-y-4">
+                                <div class="flex items-center justify-center">
+                                    <div
+                                        class="relative rounded-full overflow-hidden shadow-2xl border-4 border-amber-500 cursor-grab active:cursor-grabbing select-none touch-none bg-slate-950"
+                                        :style="{ width: containerSize + 'px', height: containerSize + 'px' }"
+                                        @mousedown="onMouseDown"
+                                        @mousemove="onMouseMove"
+                                        @mouseup="onMouseUp"
+                                        @mouseleave="onMouseUp"
+                                        @touchstart="onTouchStart"
+                                        @touchmove="onTouchMove"
+                                        @touchend="onTouchEnd"
+                                    >
+                                        <img
+                                            :src="imageSrc"
+                                            alt="Crop target"
+                                            class="absolute pointer-events-none origin-center select-none"
+                                            :style="{
+                                                width: imageDimensions.width + 'px',
+                                                height: imageDimensions.height + 'px',
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${zoom})`,
+                                            }"
+                                            draggable="false"
+                                        />
+                                        <div class="absolute inset-0 border border-white/20 rounded-full pointer-events-none"></div>
+                                    </div>
                                 </div>
-                                <p class="text-xs text-slate-400 mt-0.5">
-                                    {{ currentUser?.has_google_auth ? 'Primary verified identity (Cannot be unbound).' : 'Sign in with Google to update & secure your primary email.' }}
+
+                                <p class="text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+                                    </svg>
+                                    Drag to reposition photo
                                 </p>
+
+                                <!-- Zoom Slider Controls -->
+                                <div class="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2">
+                                    <div class="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                        <span class="flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                            </svg>
+                                            Scale & Zoom
+                                        </span>
+                                        <span>{{ Math.round(zoom * 100) }}%</span>
+                                    </div>
+
+                                    <div class="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            @click="zoom = Math.max(minZoom, zoom - 0.2)"
+                                            class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-xs shadow-sm hover:bg-slate-100"
+                                        >
+                                            -
+                                        </button>
+                                        <input
+                                            type="range"
+                                            v-model.number="zoom"
+                                            :min="minZoom"
+                                            :max="maxZoom"
+                                            step="0.05"
+                                            class="w-full accent-amber-500 cursor-pointer"
+                                        />
+                                        <button
+                                            type="button"
+                                            @click="zoom = Math.min(maxZoom, zoom + 0.2)"
+                                            class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-xs shadow-sm hover:bg-slate-100"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Crop Action Buttons -->
+                                <div class="flex items-center justify-between pt-1">
+                                    <button
+                                        type="button"
+                                        @click="resetCropper"
+                                        class="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium"
+                                    >
+                                        Cancel Crop
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="saveAvatar"
+                                        :disabled="isUploading"
+                                        class="px-5 py-2 text-xs font-semibold text-slate-950 bg-amber-500 hover:bg-amber-400 active:scale-95 disabled:opacity-50 rounded-xl transition-all shadow-glow font-display flex items-center gap-2"
+                                    >
+                                        <svg v-if="isUploading" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>{{ isUploading ? 'Saving Photo...' : 'Save Cropped Photo' }}</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="shrink-0">
-                            <a
-                                v-if="!currentUser?.has_google_auth"
-                                href="/auth/google"
-                                class="px-3.5 py-1.5 text-xs font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-xl transition-all font-display"
-                            >
-                                Connect
-                            </a>
-                            <div v-else class="flex items-center gap-1 text-slate-400 text-xs">
-                                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                </svg>
-                                <span class="text-[11px]">Bound</span>
-                            </div>
-                        </div>
                     </div>
 
-                    <!-- Provider 2: Apple ID -->
-                    <div class="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between gap-4">
-                        <div class="flex items-center gap-3 min-w-0">
-                            <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                                <svg class="w-5 h-5 fill-current text-slate-900 dark:text-white" viewBox="0 0 170 170">
-                                    <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.57-7.71-11.62-14.01-6.19-9.57-11.06-20.2-14.61-31.9-3.55-11.69-5.33-22.95-5.33-33.78 0-14.28 3.59-26.17 10.77-35.66 7.18-9.48 16.14-14.29 26.89-14.42 5.11 0 10.75 1.41 16.92 4.22 6.17 2.82 10.15 4.27 11.94 4.35 1.57 0 5.75-1.55 12.55-4.66 6.8-3.09 12.73-4.44 17.78-4.04 13.79.98 24.36 5.86 31.7 14.65-12.19 7.39-18.18 17.52-17.97 30.39.22 10.23 4.1 18.77 11.65 25.61 7.55 6.84 16.63 10.7 27.24 11.58-2.61 7.84-5.99 15.68-10.14 23.52zM119.22 33.15c0-7.39 2.64-14.34 7.92-20.85 5.28-6.51 11.83-10.77 19.65-12.8 1.09 7.18-.76 14.23-5.56 21.15-4.79 6.92-11.23 11.02-19.32 12.3-.54-.6-.94-1.22-1.2-1.85-.99-2.61-1.49-5.26-1.49-7.95z"/>
-                                </svg>
-                            </div>
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <h4 class="text-sm font-semibold text-slate-900 dark:text-white">Apple ID</h4>
-                                    <span v-if="currentUser?.has_apple_auth" class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                        Connected
-                                    </span>
+                    <!-- TAB 2: Connected Accounts -->
+                    <div v-else-if="activeTab === 'accounts'" class="space-y-5">
+                        
+                        <!-- Account Primary Email Info -->
+                        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-1">
+                            <p class="text-xs font-medium text-slate-400">Account Primary Email</p>
+                            <p class="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                {{ currentUser?.email }}
+                            </p>
+                        </div>
+
+                        <!-- Provider 1: Google Account -->
+                        <div class="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between gap-4">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                                        <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+                                        <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
+                                        <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2s.7 5.5 1.9 7.9l3.7-2.9z"/>
+                                        <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
+                                    </svg>
                                 </div>
-                                <p class="text-xs text-slate-400 mt-0.5">
-                                    {{ currentUser?.has_apple_auth ? (currentUser?.can_unbind_apple ? 'Connected. You can disconnect your Apple ID anytime.' : 'Connected. Cannot disconnect until a verified primary email or Google account is linked.') : 'Link your Apple ID for fast single sign-on.' }}
-                                </p>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="text-sm font-semibold text-slate-900 dark:text-white">Google</h4>
+                                        <span v-if="currentUser?.has_google_auth" class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                            Connected & Locked
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-0.5">
+                                        {{ currentUser?.has_google_auth ? 'Primary verified identity (Cannot be unbound).' : 'Sign in with Google to update & secure your primary email.' }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="shrink-0">
+                                <a
+                                    v-if="!currentUser?.has_google_auth"
+                                    href="/auth/google"
+                                    class="px-3.5 py-1.5 text-xs font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-xl transition-all font-display"
+                                >
+                                    Connect
+                                </a>
+                                <div v-else class="flex items-center gap-1 text-slate-400 text-xs">
+                                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    <span class="text-[11px]">Bound</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="shrink-0">
-                            <a
-                                v-if="!currentUser?.has_apple_auth"
-                                href="/auth/apple"
-                                class="px-3.5 py-1.5 text-xs font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-xl transition-all font-display"
-                            >
-                                Connect
-                            </a>
-                            <div v-else>
-                                <button
-                                    v-if="currentUser?.can_unbind_apple"
-                                    type="button"
-                                    @click="unbindApple"
-                                    :disabled="isUnbindingApple"
-                                    class="px-3.5 py-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl transition-all disabled:opacity-50"
+                        <!-- Provider 2: Apple ID -->
+                        <div class="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between gap-4">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                                    <svg class="w-5 h-5 fill-current text-slate-900 dark:text-white" viewBox="0 0 170 170">
+                                        <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.57-7.71-11.62-14.01-6.19-9.57-11.06-20.2-14.61-31.9-3.55-11.69-5.33-22.95-5.33-33.78 0-14.28 3.59-26.17 10.77-35.66 7.18-9.48 16.14-14.29 26.89-14.42 5.11 0 10.75 1.41 16.92 4.22 6.17 2.82 10.15 4.27 11.94 4.35 1.57 0 5.75-1.55 12.55-4.66 6.8-3.09 12.73-4.44 17.78-4.04 13.79.98 24.36 5.86 31.7 14.65-12.19 7.39-18.18 17.52-17.97 30.39.22 10.23 4.1 18.77 11.65 25.61 7.55 6.84 16.63 10.7 27.24 11.58-2.61 7.84-5.99 15.68-10.14 23.52zM119.22 33.15c0-7.39 2.64-14.34 7.92-20.85 5.28-6.51 11.83-10.77 19.65-12.8 1.09 7.18-.76 14.23-5.56 21.15-4.79 6.92-11.23 11.02-19.32 12.3-.54-.6-.94-1.22-1.2-1.85-.99-2.61-1.49-5.26-1.49-7.95z"/>
+                                    </svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="text-sm font-semibold text-slate-900 dark:text-white">Apple ID</h4>
+                                        <span v-if="currentUser?.has_apple_auth" class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                            Connected
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-0.5">
+                                        {{ currentUser?.has_apple_auth ? (currentUser?.can_unbind_apple ? 'Connected. You can disconnect your Apple ID anytime.' : 'Connected. Cannot disconnect until a verified primary email or Google account is linked.') : 'Link your Apple ID for fast single sign-on.' }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="shrink-0">
+                                <a
+                                    v-if="!currentUser?.has_apple_auth"
+                                    href="/auth/apple"
+                                    class="px-3.5 py-1.5 text-xs font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-xl transition-all font-display"
                                 >
-                                    {{ isUnbindingApple ? 'Disconnecting...' : 'Disconnect' }}
-                                </button>
-                                <button
-                                    v-else
-                                    type="button"
-                                    disabled
-                                    title="Verify a primary email or connect Google first before disconnecting Apple ID"
-                                    class="px-3.5 py-1.5 text-xs font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-xl cursor-not-allowed opacity-60"
-                                >
-                                    Locked
-                                </button>
+                                    Connect
+                                </a>
+                                <div v-else>
+                                    <button
+                                        v-if="currentUser?.can_unbind_apple"
+                                        type="button"
+                                        @click="unbindApple"
+                                        :disabled="isUnbindingApple"
+                                        class="px-3.5 py-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl transition-all disabled:opacity-50"
+                                    >
+                                        {{ isUnbindingApple ? 'Disconnecting...' : 'Disconnect' }}
+                                    </button>
+                                    <button
+                                        v-else
+                                        type="button"
+                                        disabled
+                                        title="Verify a primary email or connect Google first before disconnecting Apple ID"
+                                        class="px-3.5 py-1.5 text-xs font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-xl cursor-not-allowed opacity-60"
+                                    >
+                                        Locked
+                                    </button>
+                                </div>
                             </div>
                         </div>
+
                     </div>
 
                 </div>
 
                 <!-- Modal Footer Actions -->
-                <div class="flex items-center justify-between px-6 py-4 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800">
-                    <div>
-                        <button
-                            v-if="activeTab === 'avatar' && currentUser?.avatar && !imageSrc"
-                            type="button"
-                            @click="removeAvatar"
-                            :disabled="isUploading"
-                            class="text-xs font-semibold text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 disabled:opacity-50"
-                        >
-                            Remove Photo
-                        </button>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                        <button
-                            type="button"
-                            @click="closeModal"
-                            :disabled="isUploading || isUnbindingApple"
-                            class="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50"
-                        >
-                            {{ activeTab === 'accounts' ? 'Close' : 'Cancel' }}
-                        </button>
-                        <button
-                            v-if="activeTab === 'avatar' && imageSrc"
-                            type="button"
-                            @click="saveAvatar"
-                            :disabled="isUploading"
-                            class="px-5 py-2 text-xs font-semibold text-slate-950 bg-amber-500 hover:bg-amber-400 active:scale-95 disabled:opacity-50 rounded-xl transition-all shadow-glow font-display flex items-center gap-2"
-                        >
-                            <svg v-if="isUploading" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>{{ isUploading ? 'Saving...' : 'Save Avatar' }}</span>
-                        </button>
-                    </div>
+                <div class="flex items-center justify-end px-6 py-4 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 shrink-0">
+                    <button
+                        type="button"
+                        @click="closeModal"
+                        :disabled="isUploading || isUpdatingName || isUnbindingApple"
+                        class="px-5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-xl transition-all disabled:opacity-50 font-display"
+                    >
+                        Done
+                    </button>
                 </div>
 
             </div>

@@ -78,6 +78,16 @@ const handleAvatarUpdated = (updatedUser) => {
     }
 };
 
+const handleUserUpdated = (updatedUser) => {
+    if (!updatedUser) return;
+    if (page.props.auth?.user) {
+        Object.assign(page.props.auth.user, updatedUser);
+    }
+    if (page.props.user) {
+        Object.assign(page.props.user, updatedUser);
+    }
+};
+
 const logout = () => {
     router.post('/logout', {}, {
         onSuccess: () => {
@@ -90,7 +100,7 @@ const logout = () => {
 <template>
     <div class="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 transition-colors duration-200">
         <ModalSearch v-model:openSearch="openSearch" @submitSearch="handleSearchSubmit" />
-        <ModalProfileAvatar v-model="showAvatarModal" @avatarUpdated="handleAvatarUpdated" />
+        <ModalProfileAvatar v-model="showAvatarModal" @avatarUpdated="handleAvatarUpdated" @userUpdated="handleUserUpdated" />
         <ToastNotification />
 
         <!-- Sticky Glassmorphic Navbar -->

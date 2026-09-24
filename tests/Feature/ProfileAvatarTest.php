@@ -138,4 +138,57 @@ class ProfileAvatarTest extends TestCase
         $response = $this->postJson('/profile/avatar', ['avatar' => $file]);
         $response->assertStatus(401);
     }
+
+    public function test_authenticated_user_can_update_display_name(): void
+    {
+        $user = User::factory()->create(['name' => 'Original Name']);
+        $jwtService = app(JwtService::class);
+        $tokens = $jwtService->generateTokens($user);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$tokens['access_token'])
+            ->patchJson('/profile/name', [
+                'name' => 'Updated User Name',
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'message' => 'Display name updated successfully!',
+            'user' => [
+                'id' => $user->id,
+                'name' => 'Updated User Name',
+            ],
+        ]);
+
+        $user->refresh();
+        $this->assertEquals('Updated User Name', $user->name);
+    }
+
+    public function test_update_name_validates_required_and_length(): void
+    {
+        $user = User::factory()->create(['name' => 'Valid Name']);
+        $jwtService = app(JwtService::class);
+        $tokens = $jwtService->generateTokens($user);
+
+        // Empty name
+        $response = $this->withHeader('Authorization', 'Bearer '.$tokens['access_token'])
+            ->patchJson('/profile/name', [
+                'name' => '',
+            ]);
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['name']);
+
+        // 1 char name (too short)
+        $responseShort = $this->withHeader('Authorization', 'Bearer '.$tokens['access_token'])
+            ->patchJson('/profile/name', [
+                'name' => 'A',
+            ]);
+        $responseShort->assertStatus(422);
+        $responseShort->assertJsonValidationErrors(['name']);
+    }
+
+    public function test_unauthenticated_user_cannot_update_name(): void
+    {
+        $response = $this->patchJson('/profile/name', ['name' => 'Hacker Name']);
+        $response->assertStatus(401);
+    }
 }

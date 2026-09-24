@@ -11,6 +11,40 @@ use Illuminate\Support\Facades\Storage;
 class ProfileController extends Controller
 {
     /**
+     * Update the authenticated user's display name.
+     */
+    public function updateName(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'min:2', 'max:100'],
+        ]);
+
+        $user->name = trim($validated['name']);
+        $user->save();
+        $user->refresh();
+
+        return response()->json([
+            'message' => 'Display name updated successfully!',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'avatar' => $user->avatar,
+                'avatar_url' => $user->avatar_url,
+                'has_google_auth' => $user->has_google_auth,
+                'has_apple_auth' => $user->has_apple_auth,
+                'can_unbind_apple' => $user->can_unbind_apple,
+                'auth_provider' => $user->auth_provider,
+            ],
+        ], 200);
+    }
+
+    /**
      * Update the authenticated user's avatar.
      */
     public function updateAvatar(Request $request): JsonResponse

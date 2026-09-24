@@ -57,6 +57,7 @@ Route::middleware('jwt.auth')->group(function () {
     Route::post('/like/{id}', [LikeController::class, 'like'])->name('posts.like');
     Route::post('/comments', [CommentController::class, 'store'])->name('comments.store');
     Route::post('/comments/replies', [ReplyController::class, 'store'])->name('replies.store');
+    Route::patch('/profile/name', [ProfileController::class, 'updateName'])->name('profile.name.update');
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar');
     Route::delete('/profile/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.avatar.delete');
 
