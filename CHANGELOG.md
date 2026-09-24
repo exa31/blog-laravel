@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/exa31/blog-laravel/compare/v1.7.0...v1.8.0) (2026-09-24)
+
+
+### Features
+
+* **ui:** add custom animated confirmation modal and replace browser confirm ([b21a743](https://github.com/exa31/blog-laravel/commit/b21a743c486de1640ffdf3c80e45f17d063562ba))
+
 # [1.7.0](https://github.com/exa31/blog-laravel/compare/v1.6.0...v1.7.0) (2026-09-24)
 
 
