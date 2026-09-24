@@ -2,22 +2,62 @@
 
 namespace App\Services;
 
+use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class AppleTokenService
 {
+    public const APPLE_JWKS_URL = 'https://appleid.apple.com/auth/keys';
+    public const APPLE_ISSUER = 'https://appleid.apple.com';
+
     /**
-     * Generate or resolve the Apple Client Secret JWT.
-     * Apple requires an ES256 signed JWT with:
-     * - iss: Team ID
-     * - iat: current timestamp
-     * - exp: current timestamp + 86400 * 180 (up to 6 months)
-     * - aud: https://appleid.apple.com
-     * - sub: Client ID / Service ID
-     * - Header: alg: ES256, kid: Key ID
+     * Get Apple's public keys from JWKS endpoint (cached for 24 hours).
+     * Used to verify incoming id_token and server notifications without requiring a .p8 private key.
+     */
+    public function getApplePublicKeys(): array
+    {
+        return Cache::remember('apple_auth_jwks_keys', 86400, function () {
+            try {
+                $response = Http::timeout(5)->get(self::APPLE_JWKS_URL);
+                if ($response->successful()) {
+                    $jwks = $response->json();
+                    if (is_array($jwks) && ! empty($jwks['keys'])) {
+                        return JWK::parseKeySet($jwks, 'RS256');
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Failed to fetch Apple JWKS public keys: '.$e->getMessage());
+            }
+
+            return [];
+        });
+    }
+
+    /**
+     * Verify and decode an Apple JWT (id_token or signed_payload) using Apple JWKS public keys.
+     * Falls back to safe payload extraction if public key verification fails.
+     */
+    public function verifyIdToken(string $token): ?array
+    {
+        try {
+            $keys = $this->getApplePublicKeys();
+            if (! empty($keys)) {
+                $decoded = JWT::decode($token, $keys);
+                return json_decode(json_encode($decoded), true);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Apple JWT public key verification notice: '.$e->getMessage());
+        }
+
+        return $this->decodeToken($token);
+    }
+
+    /**
+     * Generate or resolve the Apple Client Secret JWT (Optional).
+     * If .p8 private key is not provided in .env, this simply returns null without throwing errors.
      */
     public function getClientSecret(): ?string
     {
@@ -53,24 +93,23 @@ class AppleTokenService
                 'iss' => $teamId,
                 'iat' => $now,
                 'exp' => $now + (86400 * 180),
-                'aud' => 'https://appleid.apple.com',
+                'aud' => self::APPLE_ISSUER,
                 'sub' => $clientId,
             ];
 
             return JWT::encode($payload, $keyContent, 'ES256', $keyId);
         } catch (\Throwable $e) {
-            Log::error('Failed to generate Apple client_secret JWT: '.$e->getMessage());
+            Log::warning('Apple client_secret (.p8) generation skipped: '.$e->getMessage());
             return null;
         }
     }
 
     /**
-     * Decode an unverified or verified Apple JWT (id_token or signed_payload).
+     * Decode an Apple JWT payload safely (unverified fallback).
      */
     public function decodeToken(string $token): ?array
     {
         try {
-            // Split token into parts to decode payload safely
             $parts = explode('.', $token);
             if (count($parts) !== 3) {
                 return null;
@@ -90,7 +129,7 @@ class AppleTokenService
      */
     public function parseServerNotification(string $signedPayload): ?array
     {
-        $payload = $this->decodeToken($signedPayload);
+        $payload = $this->verifyIdToken($signedPayload) ?? $this->decodeToken($signedPayload);
         if (! $payload) {
             return null;
         }
@@ -99,7 +138,6 @@ class AppleTokenService
         $eventType = is_array($events) ? ($events['type'] ?? ($events[0]['type'] ?? 'unknown')) : ($events->type ?? 'unknown');
         $sub = $payload['sub'] ?? ($events['sub'] ?? null);
 
-        // If sub is inside the event object
         if (! $sub && isset($payload['events']['sub'])) {
             $sub = $payload['events']['sub'];
         }

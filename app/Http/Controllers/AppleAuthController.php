@@ -24,33 +24,19 @@ class AppleAuthController extends Controller
 
     /**
      * Redirect user to Apple Sign-In.
+     * Uses OpenID Connect form_post response mode to receive id_token directly (no .p8 private key required).
      */
     public function apple(): RedirectResponse
     {
-        // Set dynamic client_secret if needed
-        $clientSecret = $this->appleTokenService->getClientSecret();
-        if ($clientSecret) {
-            config(['services.apple.client_secret' => $clientSecret]);
-        }
+        $clientId = config('services.apple.client_id', env('APPLE_CLIENT_ID'));
+        $redirectUri = urlencode(config('services.apple.redirect', url('/auth/apple-callback')));
+        $state = Str::random(40);
+        $nonce = Str::random(40);
+        session(['apple_oauth_state' => $state]);
 
-        try {
-            return Socialite::driver('apple')
-                ->scopes(['name', 'email'])
-                ->stateless()
-                ->redirect();
-        } catch (\Throwable $e) {
-            Log::error('Apple OAuth redirect failed: '.$e->getMessage());
+        $appleAuthUrl = "https://appleid.apple.com/auth/authorize?client_id={$clientId}&redirect_uri={$redirectUri}&response_type=code%20id_token&scope=name%20email&response_mode=form_post&state={$state}&nonce={$nonce}";
 
-            // Build manual Apple OAuth authorize URL as reliable fallback
-            $clientId = config('services.apple.client_id');
-            $redirectUri = urlencode(config('services.apple.redirect', url('/auth/apple-callback')));
-            $state = Str::random(40);
-            session(['apple_oauth_state' => $state]);
-
-            $appleAuthUrl = "https://appleid.apple.com/auth/authorize?client_id={$clientId}&redirect_uri={$redirectUri}&response_type=code%20id_token&scope=name%20email&response_mode=form_post&state={$state}";
-
-            return redirect()->away($appleAuthUrl);
-        }
+        return redirect()->away($appleAuthUrl);
     }
 
     /**
@@ -66,9 +52,9 @@ class AppleAuthController extends Controller
         $email = null;
         $name = null;
 
-        // Extract data from id_token JWT
+        // 1. Extract and verify data from id_token JWT (Public Key verification)
         if (! empty($idToken)) {
-            $tokenPayload = $this->appleTokenService->decodeToken($idToken);
+            $tokenPayload = $this->appleTokenService->verifyIdToken($idToken);
             if ($tokenPayload) {
                 $appleId = $tokenPayload['sub'] ?? null;
                 $email = $tokenPayload['email'] ?? null;

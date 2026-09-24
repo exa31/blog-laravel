@@ -41,6 +41,10 @@ class AppleAuthTest extends TestCase
 
         $mockTokenService = Mockery::mock(AppleTokenService::class);
         $mockTokenService->shouldReceive('getClientSecret')->andReturn(null);
+        $mockTokenService->shouldReceive('verifyIdToken')->andReturn([
+            'sub' => $appleSub,
+            'email' => $appleEmail,
+        ]);
         $mockTokenService->shouldReceive('decodeToken')->andReturn([
             'sub' => $appleSub,
             'email' => $appleEmail,
@@ -93,6 +97,10 @@ class AppleAuthTest extends TestCase
 
         $mockTokenService = Mockery::mock(AppleTokenService::class);
         $mockTokenService->shouldReceive('getClientSecret')->andReturn(null);
+        $mockTokenService->shouldReceive('verifyIdToken')->andReturn([
+            'sub' => $appleSub,
+            'email' => 'existing@example.com',
+        ]);
         $mockTokenService->shouldReceive('decodeToken')->andReturn([
             'sub' => $appleSub,
             'email' => 'existing@example.com',
@@ -196,5 +204,39 @@ class AppleAuthTest extends TestCase
             'apple_id' => null,
             'google_id' => 'google_user_id_456',
         ]);
+    }
+
+    public function test_apple_token_service_returns_null_when_p8_private_key_is_missing(): void
+    {
+        config([
+            'services.apple.client_secret' => null,
+            'services.apple.private_key' => null,
+            'services.apple.private_key_path' => null,
+            'services.apple.team_id' => null,
+            'services.apple.key_id' => null,
+        ]);
+
+        $service = new AppleTokenService();
+        $this->assertNull($service->getClientSecret());
+    }
+
+    public function test_apple_token_service_can_decode_unverified_token(): void
+    {
+        $payload = [
+            'sub' => 'apple.user.sub.123',
+            'email' => 'test@apple.com',
+        ];
+
+        // Create a basic unverified JWT structure: header.payload.signature
+        $header = base64_encode(json_encode(['alg' => 'RS256', 'kid' => '12345']));
+        $body = base64_encode(json_encode($payload));
+        $jwt = "{$header}.{$body}.dummysig";
+
+        $service = new AppleTokenService();
+        $decoded = $service->decodeToken($jwt);
+
+        $this->assertIsArray($decoded);
+        $this->assertEquals('apple.user.sub.123', $decoded['sub']);
+        $this->assertEquals('test@apple.com', $decoded['email']);
     }
 }
