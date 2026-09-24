@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/exa31/blog-laravel/compare/v1.0.0...v1.0.1) (2026-09-24)
+
+
+### Performance Improvements
+
+* **docker:** optimize image size with multi-stage alpine build and clean dockerignore ([630d0cc](https://github.com/exa31/blog-laravel/commit/630d0ccaf2767b2513e7ae961a2154afaf4d7477))
+
 # 1.0.0 (2026-09-24)
 
 
