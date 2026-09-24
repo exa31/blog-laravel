@@ -1,3 +1,10 @@
+## [1.9.3](https://github.com/exa31/blog-laravel/compare/v1.9.2...v1.9.3) (2026-09-24)
+
+
+### Bug Fixes
+
+* **logging:** stream real-time octane access and email logs to container stderr and stdout ([ba0edd9](https://github.com/exa31/blog-laravel/commit/ba0edd96213a70f952be34940750a649a3a92925))
+
 ## [1.9.2](https://github.com/exa31/blog-laravel/compare/v1.9.1...v1.9.2) (2026-09-24)
 
 
