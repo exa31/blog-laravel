@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/exa31/blog-laravel/compare/v1.1.0...v1.1.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **docker:** install composer dependencies with full app context and cleanup composer cache ([2a4a006](https://github.com/exa31/blog-laravel/commit/2a4a006a9c0e36f9b9fdbc87818d996465a3eb99))
+
 # [1.1.0](https://github.com/exa31/blog-laravel/compare/v1.0.1...v1.1.0) (2026-09-24)
 
 
