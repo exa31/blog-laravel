@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/exa31/blog-laravel/compare/v1.0.1...v1.1.0) (2026-09-24)
+
+
+### Features
+
+* **deps:** move fakerphp/faker to require for production simulation jobs ([4dbd514](https://github.com/exa31/blog-laravel/commit/4dbd514a7da228f5aca0958ca39fc3011e00920f))
+
 ## [1.0.1](https://github.com/exa31/blog-laravel/compare/v1.0.0...v1.0.1) (2026-09-24)
 
 
