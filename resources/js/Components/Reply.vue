@@ -1,24 +1,26 @@
 <script setup>
 import { formatDateTimeComment } from '../helper';
+import UserAvatar from './UserAvatar.vue';
 
 const props = defineProps(['reply']);
 </script>
 
 <template>
-    <div class="flex justify-center p-8 border-l-4 ">
-        <div class="flex flex-col w-full max-w-[320px] leading-1.5">
-            <div class="flex text-start rtl:space-x-reverse">
-                <div
-                    class="relative inline-flex items-center justify-center w-10 h-10 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
-                    <span class="font-medium text-gray-600 dark:text-gray-300">{{ props.reply.user.avatar }}</span>
-                </div>
-                <div class="flex flex-col">
-                    <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ props.reply.user.name }}</span>
-                    <span class="text-sm font-normal text-gray-500 dark:text-gray-400">{{
-                        formatDateTimeComment(props.reply.updated_at) }}</span>
-                </div>
+    <div class="relative pl-6 py-3 ml-4 border-l-2 border-slate-200 dark:border-slate-800 space-y-2">
+        <div class="flex items-center gap-2.5">
+            <UserAvatar :user="props.reply.user" size="xs" />
+            <div>
+                <h5 class="text-xs font-semibold text-slate-900 dark:text-white leading-tight">
+                    {{ props.reply.user?.name || 'Anonymous' }}
+                </h5>
+                <span class="text-[10px] text-slate-400">
+                    {{ formatDateTimeComment(props.reply.created_at || props.reply.updated_at) }}
+                </span>
             </div>
-            <p class="py-2 text-sm font-normal text-gray-900 dark:text-white"> {{ props.reply.body }}</p>
         </div>
+
+        <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-8">
+            {{ props.reply.body }}
+        </p>
     </div>
 </template>

@@ -3,12 +3,10 @@
 namespace App\Filament\Resources\PostResource\Pages;
 
 use App\Filament\Resources\PostResource;
-use App\Models\User;
 use Filament\Actions;
-use Filament\Tables\Table;
-
 use Filament\Resources\Pages\ListRecords;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
@@ -43,5 +41,4 @@ class ListPosts extends ListRecords
             ->defaultSort('updated_at', 'desc');
 
     }
-
 }

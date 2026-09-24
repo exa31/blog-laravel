@@ -1,19 +1,25 @@
 <script setup>
 const emits = defineEmits(['close']);
 const props = defineProps(['countComment', 'totalComments']);
-const close = () => {
-    emits('close');
-}
 </script>
 
 <template>
-    <div class="flex items-center justify-between px-8 mt-4">
-        <h1 class="text-2xl font-bold text-center text-gray-800 dark:text-white">Comments ({{ props.totalComments }})
-        </h1>
-        <svg @click="close" class="w-6 h-6 text-gray-800 hover:cursor-pointer dark:text-white" aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M6 18 17.94 6M18 18 6.06 6" />
-        </svg>
+    <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
+        <div>
+            <h2 class="text-xl font-bold font-display text-slate-900 dark:text-white">
+                Responses ({{ props.totalComments ?? 0 }})
+            </h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Community thoughts and discussion</p>
+        </div>
+        
+        <button
+            @click="emits('close')"
+            class="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Close Comments"
+        >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
     </div>
 </template>

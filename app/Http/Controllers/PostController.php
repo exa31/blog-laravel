@@ -6,41 +6,67 @@ use App\Models\Comment;
 use App\Models\Like;
 use App\Models\Post;
 use App\Models\SavePost;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class PostController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of blog posts.
      */
-    public function index()
+    public function index(Request $request): Response
     {
-        $isLogin = Auth::check();
-        $user = Auth::user();
-        $q = request()->query('q');
-        $totalPosts = Post::where(DB::raw('LOWER(title)'), 'LIKE', '%' . strtolower($q) . '%')->where('status', 'published')->with('user')->count();
-        $posts = Post::with('user')->searchByQuery($q)->published()->newPost()->populerByCommnet()->populerByLike()->take(12)->get();
-        $savedPosts = SavePost::where('user_id', Auth::id())->select(['post_id'])->get();
+        $query = $request->query('q', '');
+        $userId = Auth::id();
+
+        $postsQuery = Post::query()
+            ->published()
+            ->searchByQuery($query)
+            ->with(['user:id,name,email,avatar'])
+            ->withCount(['comments', 'likes']);
+
+        $totalPosts = (clone $postsQuery)->count();
+
+        $posts = $postsQuery
+            ->newPost()
+            ->take(12)
+            ->get();
+
+        $savedPostIds = $userId
+            ? SavePost::where('user_id', $userId)->pluck('post_id')->toArray()
+            : [];
+
+        $savedPosts = array_map(fn ($id) => ['post_id' => $id], $savedPostIds);
 
         return Inertia::render('Home', [
             'posts' => $posts,
-            'user' => $user,
-            'isLogin' => $isLogin,
             'totalPosts' => $totalPosts,
-            'query' => $q ?? '',
+            'query' => $query ?? '',
             'savedPosts' => $savedPosts,
+            'savedPostIds' => $savedPostIds,
         ]);
     }
 
-    public function addOnScroll()
+    /**
+     * Fetch additional posts on scroll.
+     */
+    public function addOnScroll(Request $request): JsonResponse
     {
-        $q = request()->query('q');
-        $skip = request()->query('skip');
-        $posts = Post::where(DB::raw('LOWER(title)'), 'LIKE', '%' . strtolower($q) . '%')->where('status', 'published')->with('user')->take(5)
+        $query = $request->query('q', '');
+        $skip = (int) $request->query('skip', 0);
+        $limit = (int) $request->query('limit', 6);
+
+        $posts = Post::query()
+            ->published()
+            ->searchByQuery($query)
+            ->with(['user:id,name,email,avatar'])
+            ->withCount(['comments', 'likes'])
+            ->newPost()
             ->skip($skip)
+            ->take($limit)
             ->get();
 
         return response()->json([
@@ -49,86 +75,45 @@ class PostController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Display a single post detail.
      */
-    public function create()
+    public function show(string $slug): Response
     {
-        //
-    }
+        $userId = Auth::id();
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+        $post = Post::query()
+            ->with(['user:id,name,email,avatar'])
+            ->withCount(['comments', 'likes'])
+            ->where('slug', $slug)
+            ->firstOrFail();
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $slug)
-    {
-        $isLogin = Auth::check();
-        $user = Auth::user();
-        $isSaved = SavePost::whereHas('post', function ($query) use ($slug) {
-            $query->where('slug', $slug);
-        })->where('user_id', Auth::id())->exists();
-        $post = Post::with('user')
-            ->firstWhere('slug', $slug);
-
-        // Ambil komentar dengan count replies, sorting, dan limit 5
         $topComments = Comment::where('post_id', $post->id)
             ->withCount('replies')
             ->with([
-                'replies' => function ($query) {
-                    $query->orderBy('created_at', 'desc');
-                },
-                'replies.user',
-                'user',
+                'user:id,name,avatar',
+                'replies' => fn ($q) => $q->orderBy('created_at', 'asc')->with('user:id,name,avatar'),
             ])
-            ->orderBy('replies_count', 'desc')
             ->orderBy('created_at', 'desc')
-            ->take(5)
+            ->take(10)
             ->get();
-        // Set top comments ke dalam post
+
         $post->setRelation('comments', $topComments);
-        $isLiked = Like::where('user_id', Auth::id())->get();
-        $isLiked = $isLiked->contains('post_id', $post->id);
+
+        $isLiked = $userId
+            ? Like::where('user_id', $userId)->where('post_id', $post->id)->exists()
+            : false;
+
+        $isSaved = $userId
+            ? SavePost::where('user_id', $userId)->where('post_id', $post->id)->exists()
+            : false;
+
         $totalComments = Comment::where('post_id', $post->id)->count();
 
         return Inertia::render('DetailPost', [
             'post' => $post,
             'totalComments' => $totalComments,
-            'isLogin' => $isLogin,
             'isLiked' => $isLiked,
             'isSaved' => $isSaved,
-            'user' => $user,
         ]);
-
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
     }
 }

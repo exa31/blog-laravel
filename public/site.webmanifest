@@ -1,0 +1,17 @@
+{
+  "name": "E-Blog - Modern Engineering & Tech Publication",
+  "short_name": "EBlog",
+  "description": "A modern publication for software engineering, system architecture, cloud craft, and design.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0F19",
+  "theme_color": "#F59E0B",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

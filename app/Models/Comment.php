@@ -2,11 +2,18 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Comment extends Model
 {
-    protected $fillable = ['user_id', 'post_id', 'content'];
+    use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'post_id',
+        'content',
+    ];
 
     public function user()
     {
@@ -23,9 +30,9 @@ class Comment extends Model
         return $this->hasMany(Reply::class);
     }
 
-    public function getComments($query, $post_id)
+    public function scopeForPost($query, int $postId)
     {
-        return $query->where('post_id', $post_id)->orderBy('created_at', 'desc');
+        return $query->where('post_id', $postId)->orderBy('created_at', 'desc');
     }
 
     protected $casts = [

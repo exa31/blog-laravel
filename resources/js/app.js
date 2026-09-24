@@ -1,8 +1,16 @@
 import './bootstrap';
 import "flowbite"
 import { createApp, h } from 'vue'
-import { createInertiaApp } from '@inertiajs/vue3'
+import { createInertiaApp, router } from '@inertiajs/vue3'
 import AppLayout from './Layouts/AppLayout.vue';
+
+// Auto-recover from 419 Page Expired / CSRF mismatches seamlessly
+router.on('invalid', (event) => {
+    if (event.detail.response?.status === 419) {
+        event.preventDefault();
+        router.reload();
+    }
+});
 
 createInertiaApp({
     title: (title) => title ? `${title} - Eblog` : 'Eblog',

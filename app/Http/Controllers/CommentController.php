@@ -3,97 +3,65 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comment;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class CommentController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Store a new comment.
      */
-    public function index()
+    public function store(Request $request): JsonResponse
     {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'content' => 'required|min:3',
-            'post_id' => 'required',
+        $validated = $request->validate([
+            'content' => 'required|string|min:2|max:2000',
+            'post_id' => 'required|integer|exists:posts,id',
         ]);
 
         try {
+            $user = Auth::user();
             $comment = Comment::create([
-                'user_id' => Auth::id(),
-                'post_id' => $request->post_id,
-                'content' => $request->content,
+                'user_id' => $user->id,
+                'post_id' => $validated['post_id'],
+                'content' => $validated['content'],
             ]);
-            return response()->json(['message' => 'Comment created successfully', 'comment' => $comment], 201);
-        } catch (\Throwable $th) {
-            return response()->json(['message' => 'Failed to create comment ' . $th], 500);
+
+            $comment->load(['user:id,name,avatar']);
+            $comment->setRelation('replies', collect());
+
+            return response()->json([
+                'message' => 'Comment posted successfully',
+                'comment' => $comment,
+            ], 201);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to post comment. Please try again.',
+            ], 500);
         }
     }
 
     /**
-     * Display the specified resource.
+     * Paginate/scroll comments for a post.
      */
-    public function show(Comment $comment)
+    public function addOnScroll(Request $request, int $id): JsonResponse
     {
-        //
-    }
+        $skip = (int) $request->query('skip', 0);
+        $limit = (int) $request->query('limit', 5);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Comment $comment)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Comment $comment)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Comment $comment)
-    {
-        //
-    }
-
-    public function addOnScroll($id)
-    {
         $comments = Comment::where('post_id', $id)
             ->withCount('replies')
             ->with([
-                'replies' => function ($query) {
-                    $query->orderBy('created_at', 'desc');
-                },
-                'replies.user',
-                'user',
+                'user:id,name,avatar',
+                'replies' => fn ($q) => $q->orderBy('created_at', 'asc')->with('user:id,name,avatar'),
             ])
-            ->orderBy('replies_count', 'desc')
             ->orderBy('created_at', 'desc')
-            ->take(5)
-            ->skip(request()->skip)
+            ->skip($skip)
+            ->take($limit)
             ->get();
-        return response()->json(['comments' => $comments], 200);
+
+        return response()->json([
+            'comments' => $comments,
+        ], 200);
     }
 }

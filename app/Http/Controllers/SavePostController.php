@@ -3,35 +3,50 @@
 namespace App\Http\Controllers;
 
 use App\Models\SavePost;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class SavePostController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of saved posts.
      */
-    public function index()
+    public function index(): Response
     {
-        $isLogin = Auth::check();
-        $user = Auth::user();
-        $savedPosts = SavePost::with(['post', 'post.user'])->where('user_id', Auth::id())->take(12)->get();
-        $totalPosts = SavePost::where('user_id', Auth::id())->count();
+        $userId = Auth::id();
+
+        $savedPostsQuery = SavePost::where('user_id', $userId)
+            ->with(['post.user:id,name,email,avatar'])
+            ->orderBy('created_at', 'desc');
+
+        $totalPosts = $savedPostsQuery->count();
+        $savedPosts = $savedPostsQuery->take(12)->get();
+
         return Inertia::render('SavePost', [
             'savedPosts' => $savedPosts,
-            'user' => $user,
-            'isLogin' => $isLogin,
             'posts' => $savedPosts,
             'totalPosts' => $totalPosts,
         ]);
     }
 
-    public function addOnScroll()
+    /**
+     * Load more saved posts on scroll.
+     */
+    public function addOnScroll(Request $request): JsonResponse
     {
-        $skip = request()->query('skip');
-        $savedPosts = SavePost::with(['post', 'post.user'])->where('user_id', Auth::id())->take(12)->skip($skip)->get();
+        $userId = Auth::id();
+        $skip = (int) $request->query('skip', 0);
+        $limit = (int) $request->query('limit', 6);
+
+        $savedPosts = SavePost::where('user_id', $userId)
+            ->with(['post.user:id,name,email,avatar'])
+            ->orderBy('created_at', 'desc')
+            ->skip($skip)
+            ->take($limit)
+            ->get();
 
         return response()->json([
             'posts' => $savedPosts,
@@ -39,70 +54,49 @@ class SavePostController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Save a post to bookmarks.
      */
-    public function create()
+    public function store(Request $request): JsonResponse
     {
-        //
-    }
+        $validated = $request->validate([
+            'post_id' => 'required|integer|exists:posts,id',
+        ]);
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request, SavePost $savePost)
-    {
-        DB::beginTransaction();
-        try {
-            $savePost::create([
-                'user_id' => Auth::id(),
-                'post_id' => $request->post_id,
-            ]);
-            DB::commit();
-            return response()->json(['message' => 'Post saved successfully'], 201);
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            return response()->json(['message' => 'Something went wrong: ' . $th->getMessage()], 500);
+        $userId = Auth::id();
+
+        $existing = SavePost::where('user_id', $userId)
+            ->where('post_id', $validated['post_id'])
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'message' => 'Post already bookmarked',
+            ], 200);
         }
 
+        SavePost::create([
+            'user_id' => $userId,
+            'post_id' => $validated['post_id'],
+        ]);
+
+        return response()->json([
+            'message' => 'Post bookmarked successfully',
+        ], 201);
     }
 
     /**
-     * Display the specified resource.
+     * Remove a post from bookmarks.
      */
-    public function show()
+    public function destroy(int $id): JsonResponse
     {
-        //
-    }
+        $userId = Auth::id();
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit()
-    {
-        //
-    }
+        SavePost::where('user_id', $userId)
+            ->where('post_id', $id)
+            ->delete();
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, SavePost $savePost)
-    {
-
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id, SavePost $savePost)
-    {
-        DB::beginTransaction();
-        try {
-            $savePost::where('user_id', Auth::id())->where('post_id', $id)->delete();
-            DB::commit();
-            return response()->json(['message' => 'Post delete successfully'], 200);
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            return response()->json(['message' => 'Something went wrong'], 500);
-        }
+        return response()->json([
+            'message' => 'Post removed from bookmarks',
+        ], 200);
     }
 }

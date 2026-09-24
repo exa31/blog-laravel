@@ -1,62 +1,163 @@
-<script setup lang="ts">
+<script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import BrandLogo from '../Components/BrandLogo.vue';
 import EmptyLayout from '../Layouts/EmptyLayout.vue';
+import ToastNotification from '../Components/ToastNotification.vue';
+
 defineOptions({
     layout: EmptyLayout,
-})
+});
 
 const form = useForm({
     name: '',
     email: '',
     password: '',
     password_confirm: '',
-    invalid: null,
-    sameEmail: null,
 });
 
+const submit = () => {
+    form.post('/register', {
+        onError: () => {
+            form.reset('password', 'password_confirm');
+        },
+    });
+};
 </script>
 
 <template>
-
     <Head>
-        <title>Register</title>
+        <title>Create Account — EBlog</title>
+        <meta name="description" content="Join E-Blog to discover cutting-edge engineering stories, save your favorite architecture deep-dives, and participate in discussions." />
+        <meta name="robots" content="noindex, follow" />
     </Head>
-    <form @submit.prevent="form.post('/register')" class="max-w-sm mx-auto my-24 space-y-3">
-        <div class="mb-5">
 
-            <label for="name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Name</label>
-            <input type="text" id="name" v-model="form.name"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="Your name" required />
-            <p class="text-red-500" v-if="form.errors.name">{{ form.errors.email }}</p>
-            <label for="email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Your email</label>
-            <input type="email" id="email" v-model="form.email"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="example@example.com" required />
-            <p class="text-red-500" v-if="form.errors.email">{{ form.errors.email }}</p>
-            <p class="text-red-500" v-if="form.errors.sameEmail">{{ form.errors.sameEmail }}</p>
+    <ToastNotification />
+
+    <div class="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 font-sans">
+        <div class="w-full max-w-md space-y-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-8 sm:p-10 shadow-xl dark:shadow-card-dark relative overflow-hidden">
+            
+            <!-- Top Ambient Glow -->
+            <div class="absolute -top-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Header -->
+            <div class="text-center space-y-2 relative">
+                <div class="flex justify-center mb-3">
+                    <BrandLogo size="lg" :showText="false" />
+                </div>
+                <h1 class="font-display font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white tracking-tight">
+                    Join the Community
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    Create an account to bookmark stories and join discussions
+                </p>
+            </div>
+
+            <!-- Form -->
+            <form @submit.prevent="submit" class="space-y-4">
+                <div>
+                    <label for="name" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Full Name
+                    </label>
+                    <input
+                        id="name"
+                        v-model="form.name"
+                        type="text"
+                        placeholder="Alex Morgan"
+                        required
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                    />
+                    <p v-if="form.errors.name" class="text-xs text-rose-500 mt-1">{{ form.errors.name }}</p>
+                </div>
+
+                <div>
+                    <label for="email" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Email Address
+                    </label>
+                    <input
+                        id="email"
+                        v-model="form.email"
+                        type="email"
+                        placeholder="alex@example.com"
+                        required
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                    />
+                    <p v-if="form.errors.email" class="text-xs text-rose-500 mt-1">{{ form.errors.email }}</p>
+                </div>
+
+                <div>
+                    <label for="password" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Password
+                    </label>
+                    <input
+                        id="password"
+                        v-model="form.password"
+                        type="password"
+                        placeholder="At least 8 characters"
+                        required
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                    />
+                    <p v-if="form.errors.password" class="text-xs text-rose-500 mt-1">{{ form.errors.password }}</p>
+                </div>
+
+                <div>
+                    <label for="password_confirm" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Confirm Password
+                    </label>
+                    <input
+                        id="password_confirm"
+                        v-model="form.password_confirm"
+                        type="password"
+                        placeholder="Repeat your password"
+                        required
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                    />
+                    <p v-if="form.errors.password_confirm" class="text-xs text-rose-500 mt-1">{{ form.errors.password_confirm }}</p>
+                </div>
+
+                <button
+                    type="submit"
+                    :disabled="form.processing"
+                    class="w-full py-3 px-4 text-sm font-semibold text-slate-950 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 rounded-xl transition-all shadow-glow font-display active:scale-[0.98] mt-2"
+                >
+                    {{ form.processing ? 'Creating Account...' : 'Create Account' }}
+                </button>
+            </form>
+
+            <!-- Divider -->
+            <div class="relative flex items-center justify-center">
+                <div class="w-full border-t border-slate-200 dark:border-slate-800"></div>
+                <span class="absolute bg-white dark:bg-slate-900 px-3 text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                    or continue with
+                </span>
+            </div>
+
+            <!-- Google OAuth Button -->
+            <a
+                href="/auth/google"
+                class="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm font-medium transition-all active:scale-[0.98]"
+            >
+                <svg class="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+                    <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
+                    <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2s.7 5.5 1.9 7.9l3.7-2.9z"/>
+                    <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
+                </svg>
+                Google
+            </a>
+
+            <!-- Footer -->
+            <p class="text-center text-xs text-slate-500 dark:text-slate-400">
+                Already have an account?
+                <Link href="/login" class="font-semibold text-amber-500 hover:text-amber-600 dark:hover:text-amber-400 ml-1">
+                    Sign in
+                </Link>
+            </p>
+
+            <div class="text-center pt-2">
+                <Link href="/" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    ← Return to Home
+                </Link>
+            </div>
         </div>
-        <div class="mb-5">
-            <label for="password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Your
-                password</label>
-            <input type="password" id="password" v-model="form.password"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                required />
-            <p class="text-red-500" v-if="form.errors.password">{{ form.errors.password }}</p>
-        </div>
-        <div class="mb-5">
-            <label for="password_confirm" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Confirm
-                password</label>
-            <input type="password" id="password_confirm" v-model="form.password_confirm"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                required />
-            <p class="text-red-500" v-if="form.errors.password_confirm">{{ form.errors.password_confirm }}</p>
-        </div>
-        <p class="text-red-500" v-if="form.errors.invalid">{{ form.errors.invalid }}</p>
-        <p class="mb-5">Already have an account?
-            <Link href="/login" class="text-blue-500 hover:underline">Login here</Link>
-        </p>
-        <button type="submit"
-            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Submit</button>
-    </form>
+    </div>
 </template>

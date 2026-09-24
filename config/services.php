@@ -39,6 +39,12 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URI'),
-    ]
+    ],
+
+    'news_api' => [
+        'key' => env('NEWS_API_KEY'),
+        'category' => env('NEWS_API_CATEGORY', 'technology'),
+        'language' => env('NEWS_API_LANGUAGE', 'en'),
+    ],
 
 ];

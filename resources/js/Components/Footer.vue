@@ -1,24 +1,33 @@
+<script setup>
+import { Link } from '@inertiajs/vue3';
+import BrandLogo from './BrandLogo.vue';
+</script>
+
 <template>
-    <footer class="m-4 bg-white rounded-lg shadow dark:bg-gray-800">
-        <div class="w-full max-w-screen-xl p-4 mx-auto md:flex md:items-center md:justify-between">
-            <span class="text-sm text-gray-500 sm:text-center dark:text-gray-400">© 2023 <a href="https://flowbite.com/"
-                    class="hover:underline">Flowbite™</a>. All Rights Reserved.
-            </span>
-            <ul class="flex flex-wrap items-center mt-3 text-sm font-medium text-gray-500 dark:text-gray-400 sm:mt-0">
-                <li>
-                    <a href="#" class="hover:underline me-4 md:me-6">About</a>
-                </li>
-                <li>
-                    <a href="#" class="hover:underline me-4 md:me-6">Privacy Policy</a>
-                </li>
-                <li>
-                    <a href="#" class="hover:underline me-4 md:me-6">Licensing</a>
-                </li>
-                <li>
-                    <a href="#" class="hover:underline">Contact</a>
-                </li>
-            </ul>
+    <footer class="mt-20 border-t border-slate-200 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/40 backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="flex flex-col items-center md:items-start gap-1">
+                    <BrandLogo size="sm" />
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Software engineering, system architecture & modern web craft.</p>
+                </div>
+
+                <ul class="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-600 dark:text-slate-400">
+                    <li>
+                        <Link href="/" class="hover:text-amber-500 transition-colors font-medium">Home</Link>
+                    </li>
+                    <li>
+                        <Link href="/save-posts" class="hover:text-amber-500 transition-colors font-medium">Saved Bookmarks</Link>
+                    </li>
+                    <li>
+                        <a href="/dashboard" class="hover:text-amber-500 transition-colors font-medium">Author Panel</a>
+                    </li>
+                </ul>
+
+                <p class="text-xs text-slate-400 dark:text-slate-500 text-center md:text-right">
+                    © {{ new Date().getFullYear() }} EBlog Publication. All rights reserved.
+                </p>
+            </div>
         </div>
     </footer>
-
 </template>

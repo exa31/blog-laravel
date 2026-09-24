@@ -3,12 +3,17 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PostResource\Pages;
-use App\Filament\Resources\PostResource\RelationManagers;
 use App\Models\Post;
-use Filament\Forms;
-use Filament\Forms\Form;
+use App\Services\ImageOptimizerService;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -16,14 +21,60 @@ class PostResource extends Resource
 {
     protected static ?string $model = Post::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                //
-            ]);
+        return $schema
+            ->components([
+                TextInput::make('title')->required(),
+                FileUpload::make('image_thumbnail')
+                    ->image()
+                    ->imageEditor()
+                    ->imageCropAspectRatio('16:9')
+                    ->imageEditorAspectRatios([
+                        '16:9',
+                        '16:10',
+                    ])
+                    ->imageEditorMode(2)
+                    ->maxSize(10240)
+                    ->disk(config('filesystems.default', 'public'))
+                    ->directory('images')
+                    ->visibility('public')
+                    ->saveUploadedFileUsing(function ($file) {
+                        return app(ImageOptimizerService::class)->optimizeAndStore(
+                            $file,
+                            directory: 'images',
+                            disk: config('filesystems.default', 'public'),
+                            quality: 80,
+                            maxWidth: 1920
+                        );
+                    })
+                    ->required(),
+                RichEditor::make('content')
+                    ->fileAttachmentsDisk(config('filesystems.default', 'public'))
+                    ->fileAttachmentsDirectory('attachments')
+                    ->fileAttachmentsVisibility('public')
+                    ->saveUploadedFileAttachmentUsing(function ($file) {
+                        return app(ImageOptimizerService::class)->optimizeAndStore(
+                            $file,
+                            directory: 'attachments',
+                            disk: config('filesystems.default', 'public'),
+                            quality: 80,
+                            maxWidth: 1920
+                        );
+                    })
+                    ->required(),
+                ToggleButtons::make('status')
+                    ->options([
+                        'draft' => 'Draft',
+                        'published' => 'Published',
+                    ])
+                    ->default('draft')
+                    ->inline()
+                    ->required(),
+            ])
+            ->columns(1);
     }
 
     public static function table(Table $table): Table
@@ -40,11 +91,11 @@ class PostResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

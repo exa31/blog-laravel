@@ -1,60 +1,138 @@
-<script setup lang="ts">
+<script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import BrandLogo from '../Components/BrandLogo.vue';
 import EmptyLayout from '../Layouts/EmptyLayout.vue';
+import ToastNotification from '../Components/ToastNotification.vue';
 
 defineOptions({
     layout: EmptyLayout,
-})
+});
 
 const form = useForm({
     email: '',
     password: '',
-    invalid: false,
 });
+
+const submit = () => {
+    form.post('/login', {
+        onError: () => {
+            form.reset('password');
+        },
+    });
+};
 </script>
 
-
 <template>
-
     <Head>
-        <title>Login</title>
+        <title>Sign In — EBlog</title>
+        <meta name="description" content="Sign in to your E-Blog account to access bookmark management, interactive reactions, and discussions." />
+        <meta name="robots" content="noindex, follow" />
     </Head>
-    <form @submit.prevent="form.post('/login', {
-        onError: () => form.reset()
-    })" class="max-w-sm mx-auto my-40 ">
-        <div class="mb-5">
-            <label for="email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Your email</label>
-            <input type="email" name="email" id="email" v-model="form.email"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="name@flowbite.com" required />
-            <p class="text-red-500" v-if="form.errors.email">{{ form.errors.email }}</p>
-            <p class="text-red-500" v-if="form.errors.invalid">{{ form.errors.invalid }}</p>
 
-        </div>
-        <div class="mb-5">
-            <label for="password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Your
-                password</label>
-            <input type="password" id="password" name="password" v-model="form.password"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                required />
-            <p class="text-red-500" v-if="form.errors.password">{{ form.errors.password }}</p>
-            <p class="text-red-500" v-if="form.errors.invalid">{{ form.errors.invalid }}</p>
+    <ToastNotification />
 
+    <div class="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 font-sans">
+        <div class="w-full max-w-md space-y-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-8 sm:p-10 shadow-xl dark:shadow-card-dark relative overflow-hidden">
+            
+            <!-- Top Ambient Glow -->
+            <div class="absolute -top-24 -left-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Header -->
+            <div class="text-center space-y-2 relative">
+                <div class="flex justify-center mb-3">
+                    <BrandLogo size="lg" :showText="false" />
+                </div>
+                <h1 class="font-display font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white tracking-tight">
+                    Welcome back
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    Enter your credentials to access your account and bookmarks
+                </p>
+            </div>
+
+            <!-- Global Error Banner -->
+            <div v-if="form.errors.invalid" class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium text-center">
+                {{ form.errors.invalid }}
+            </div>
+
+            <!-- Form -->
+            <form @submit.prevent="submit" class="space-y-4">
+                <div>
+                    <label for="email" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Email Address
+                    </label>
+                    <input
+                        id="email"
+                        v-model="form.email"
+                        type="email"
+                        placeholder="you@example.com"
+                        required
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                    />
+                    <p v-if="form.errors.email" class="text-xs text-rose-500 mt-1">{{ form.errors.email }}</p>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="password" class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            Password
+                        </label>
+                    </div>
+                    <input
+                        id="password"
+                        v-model="form.password"
+                        type="password"
+                        placeholder="••••••••"
+                        required
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                    />
+                    <p v-if="form.errors.password" class="text-xs text-rose-500 mt-1">{{ form.errors.password }}</p>
+                </div>
+
+                <button
+                    type="submit"
+                    :disabled="form.processing"
+                    class="w-full py-3 px-4 text-sm font-semibold text-slate-950 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 rounded-xl transition-all shadow-glow font-display active:scale-[0.98] mt-2"
+                >
+                    {{ form.processing ? 'Signing In...' : 'Sign In with Email' }}
+                </button>
+            </form>
+
+            <!-- Divider -->
+            <div class="relative flex items-center justify-center">
+                <div class="w-full border-t border-slate-200 dark:border-slate-800"></div>
+                <span class="absolute bg-white dark:bg-slate-900 px-3 text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                    or continue with
+                </span>
+            </div>
+
+            <!-- Google OAuth Button -->
+            <a
+                href="/auth/google"
+                class="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm font-medium transition-all active:scale-[0.98]"
+            >
+                <svg class="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+                    <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
+                    <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2s.7 5.5 1.9 7.9l3.7-2.9z"/>
+                    <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
+                </svg>
+                Google
+            </a>
+
+            <!-- Footer -->
+            <p class="text-center text-xs text-slate-500 dark:text-slate-400">
+                Don't have an account?
+                <Link href="/register" class="font-semibold text-amber-500 hover:text-amber-600 dark:hover:text-amber-400 ml-1">
+                    Create account
+                </Link>
+            </p>
+
+            <div class="text-center pt-2">
+                <Link href="/" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    ← Return to Home
+                </Link>
+            </div>
         </div>
-        <p class="mb-5">Don't have an account?
-            <Link href="/register" class="text-blue-500 hover:underline">Register
-            here</Link>
-        </p>
-        <button type="submit" :disabled="form.processing"
-            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Submit</button>
-        <a href="/auth/google" class="flex justify-center p-4 mt-5 text-center border border-black rounded-lg">
-            <svg class="w-6 h-6 text-gray-800 me-6 dark:text-white" aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                <path fill-rule="evenodd"
-                    d="M12.037 21.998a10.313 10.313 0 0 1-7.168-3.049 9.888 9.888 0 0 1-2.868-7.118 9.947 9.947 0 0 1 3.064-6.949A10.37 10.37 0 0 1 12.212 2h.176a9.935 9.935 0 0 1 6.614 2.564L16.457 6.88a6.187 6.187 0 0 0-4.131-1.566 6.9 6.9 0 0 0-4.794 1.913 6.618 6.618 0 0 0-2.045 4.657 6.608 6.608 0 0 0 1.882 4.723 6.891 6.891 0 0 0 4.725 2.07h.143c1.41.072 2.8-.354 3.917-1.2a5.77 5.77 0 0 0 2.172-3.41l.043-.117H12.22v-3.41h9.678c.075.617.109 1.238.1 1.859-.099 5.741-4.017 9.6-9.746 9.6l-.215-.002Z"
-                    clip-rule="evenodd" />
-            </svg>
-            <p class="text-center">Login With Google</p>
-        </a>
-    </form>
+    </div>
 </template>

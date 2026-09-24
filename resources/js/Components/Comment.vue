@@ -1,105 +1,146 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import Reply from './Reply.vue';
+import UserAvatar from './UserAvatar.vue';
 import { formatDateTimeComment } from '../helper';
-import { router, useForm } from '@inertiajs/vue3';
+import { showToast } from '../helper/toast';
 import axios from 'axios';
 
 const props = defineProps(['comment']);
+const page = usePage();
 
 const openReply = ref(false);
 const formReply = ref(false);
+const replyBody = ref('');
+const isSubmitting = ref(false);
 
-const form = useForm({
-    body: '',
-});
+const repliesList = computed(() => props.comment.replies || []);
 
-
-const handleReply = () => {
+const toggleReplies = () => {
     openReply.value = !openReply.value;
-}
+};
+
+const toggleFormReply = () => {
+    formReply.value = !formReply.value;
+    if (formReply.value) {
+        openReply.value = true;
+    }
+};
 
 const submitReply = async () => {
+    if (!replyBody.value.trim() || isSubmitting.value) return;
+
+    isSubmitting.value = true;
     try {
         const res = await axios.post('/comments/replies', {
-            body: form.body,
-            comment_id: props.comment.id
-        })
+            body: replyBody.value.trim(),
+            comment_id: props.comment.id,
+        });
+
         if (res.status === 201) {
-            const reply = {
+            const user = page.props.auth?.user || page.props.user;
+            const newReply = res.data.reply || {
                 user: {
-                    name: props.comment.user.name,
-                    avatar: props.comment.user.avatar
+                    name: user?.name || 'You',
+                    avatar: user?.avatar || 'U',
                 },
-                body: form.body,
-                updated_at: new Date()
+                body: replyBody.value.trim(),
+                created_at: new Date().toISOString(),
+            };
+
+            if (!props.comment.replies) {
+                props.comment.replies = [];
             }
-            props.comment.replies.push(reply);
-            form.reset();
+            props.comment.replies.push(newReply);
+            replyBody.value = '';
+            formReply.value = false;
+            openReply.value = true;
+            showToast('Reply added successfully!', 'success');
         }
     } catch (error) {
-        console.log(error);
+        showToast('Failed to post reply. Please try again.', 'error');
+    } finally {
+        isSubmitting.value = false;
     }
-}
-
-const handleFormReply = () => {
-    formReply.value = !formReply.value;
-}
+};
 </script>
 
 <template>
-    <div class="flex flex-col justify-center p-8 ">
-        <div class="flex flex-col w-full max-w-[320px] leading-1.5">
-            <div class="flex text-start rtl:space-x-reverse">
-                <div
-                    class="relative inline-flex items-center justify-center w-10 h-10 overflow-hidden text-xl bg-gray-300 rounded-full me-3 dark:bg-gray-600">
-                    <span class="font-medium text-gray-600 dark:text-gray-300">{{ comment.user.avatar }}</span>
-                </div>
-                <div class="flex flex-col text-start rtl:space-x-reverse">
-                    <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ comment.user.name }}</span>
-                    <span class="text-sm font-normal text-gray-500 dark:text-gray-400">{{ formatDateTimeComment(
-                        comment.updated_at) }}</span>
-                </div>
-            </div>
-            <p class="py-2 text-sm font-normal text-gray-900 dark:text-white"> {{ comment.content }}</p>
-            <div v-if="comment.id"
-                :class="'flex mb-2 hover:cursor-pointer ' + (comment.replies.length > 0 ? 'justify-between' : 'justify-end')">
-                <div v-if="comment.replies.length > 0" @click="handleReply" class="flex space-x-2">
-                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true"
-                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
-                        viewBox="0 0 24 24">
-                        <path fill-rule="evenodd"
-                            d="M4 3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h1v2a1 1 0 0 0 1.707.707L9.414 13H15a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H4Z"
-                            clip-rule="evenodd" />
-                        <path fill-rule="evenodd"
-                            d="M8.023 17.215c.033-.03.066-.062.098-.094L10.243 15H15a3 3 0 0 0 3-3V8h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1v2a1 1 0 0 1-1.707.707L14.586 18H9a1 1 0 0 1-.977-.785Z"
-                            clip-rule="evenodd" />
-                    </svg>
-                    <p>{{ openReply ? 'Hide Reply' : comment.replies.length + ' Reply' }} </p>
-                </div>
-                <button @click="handleFormReply"
-                    class="text-sm font-semibold text-blue-500 dark:text-blue-500 hover:underline focus:outline-none">Reply</button>
-            </div>
-            <div v-if="formReply" class="flex justify-center p-8 border-l-4 ">
-                <div class="flex flex-col w-full max-w-[320px] leading-1.5">
-                    <form @submit.prevent="submitReply" class="flex flex-col items-center">
-                        <div class="flex flex-col p-2 bg-white shadow-2xl">
-                            <textarea v-model="form.body"
-                                class="w-64 h-20 p-2 duration-200 border-none rounded-lg outline-none active:outline-none active:border-none focus:outline-none focus:border-none focus:h-20 dark:border-gray-700"
-                                placeholder="Write a comment" />
-                        </div>
-                        <div class="flex self-end space-x-2">
-                            <button @click="handleFormReply" type="button"
-                                class="p-2 mt-2 text-white bg-gray-500 rounded-lg hover:bg-gray-600 dark:bg-gray-500 dark:hover:bg-gray-600">Cancel</button>
-                            <button :disabled="form.processing" type="submit"
-                                class="p-2 mt-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600">Reply</button>
-                        </div>
-                    </form>
+    <div class="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800/80 space-y-3">
+        <!-- Comment Author Header -->
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <UserAvatar :user="props.comment.user" size="sm" />
+                <div>
+                    <h4 class="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white">
+                        {{ props.comment.user?.name || 'Reader' }}
+                    </h4>
+                    <span class="text-[11px] text-slate-400">
+                        {{ formatDateTimeComment(props.comment.created_at || props.comment.updated_at) }}
+                    </span>
                 </div>
             </div>
-            <div v-if="openReply">
-                <Reply v-for="(reply, index) in comment.replies" :key="index" :reply="reply" />
-            </div>
+        </div>
+
+        <!-- Comment Content -->
+        <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-11">
+            {{ props.comment.content }}
+        </p>
+
+        <!-- Actions Bar -->
+        <div class="pl-11 flex items-center gap-4 text-xs font-medium">
+            <button
+                v-if="repliesList.length > 0"
+                @click="toggleReplies"
+                class="text-slate-500 hover:text-amber-500 transition-colors flex items-center gap-1.5"
+            >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <span>{{ openReply ? 'Hide Replies' : `${repliesList.length} ${repliesList.length === 1 ? 'Reply' : 'Replies'}` }}</span>
+            </button>
+
+            <button
+                @click="toggleFormReply"
+                class="text-amber-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+            >
+                {{ formReply ? 'Cancel Reply' : 'Reply' }}
+            </button>
+        </div>
+
+        <!-- Inline Reply Form -->
+        <div v-if="formReply" class="pl-11 pt-2">
+            <form @submit.prevent="submitReply" class="space-y-2">
+                <textarea
+                    v-model="replyBody"
+                    rows="2"
+                    placeholder="Write your response..."
+                    class="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                    required
+                ></textarea>
+                <div class="flex justify-end gap-2">
+                    <button
+                        type="button"
+                        @click="formReply = false"
+                        class="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 rounded-lg"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        :disabled="isSubmitting || !replyBody.trim()"
+                        class="px-4 py-1.5 text-xs font-semibold text-slate-950 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 rounded-lg transition-all"
+                    >
+                        {{ isSubmitting ? 'Posting...' : 'Reply' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Threaded Replies -->
+        <div v-if="openReply && repliesList.length > 0" class="space-y-1 pt-1">
+            <Reply v-for="(reply, idx) in repliesList" :key="idx" :reply="reply" />
         </div>
     </div>
 </template>

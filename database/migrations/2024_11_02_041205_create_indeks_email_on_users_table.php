@@ -5,13 +5,20 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        DB::statement('CREATE INDEX index_email ON users USING HASH (email);');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('CREATE INDEX IF NOT EXISTS index_email ON users USING HASH (email);');
+        } else {
+            Schema::table('users', function (Blueprint $table) {
+                $table->index('email', 'index_email');
+            });
+        }
     }
 
     /**
@@ -19,6 +26,12 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        DB::statement('DROP INDEX IF EXISTS index_email;');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('DROP INDEX IF EXISTS index_email;');
+        } else {
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropIndex('index_email');
+            });
+        }
     }
 };

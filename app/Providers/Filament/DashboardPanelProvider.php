@@ -2,21 +2,22 @@
 
 namespace App\Providers\Filament;
 
-use Filament\Http\Middleware\Authenticate;
+use App\Http\Middleware\FilamentAuthenticate;
+use App\Http\Middleware\FilamentEncryptCookies;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class DashboardPanelProvider extends PanelProvider
@@ -28,6 +29,7 @@ class DashboardPanelProvider extends PanelProvider
             ->id('dashboard')
             ->path('dashboard')
             ->brandName('EBlog')
+            ->favicon('/favicon.svg')
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -36,25 +38,47 @@ class DashboardPanelProvider extends PanelProvider
             ->pages([
                 Pages\Dashboard::class,
             ])
-            ->spa()
+            ->navigationItems([
+                NavigationItem::make('View Storefront')
+                    ->url('/', shouldOpenInNewTab: true)
+                    ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->sort(-1),
+            ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
             ])
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => new HtmlString('
+                    <script>
+                        document.addEventListener("livewire:init", () => {
+                            if (window.Livewire) {
+                                Livewire.hook("request", ({ fail }) => {
+                                    fail(({ status, preventDefault }) => {
+                                        if (status === 419) {
+                                            preventDefault();
+                                            window.location.reload();
+                                        }
+                                    });
+                                });
+                            }
+                        });
+                    </script>
+                ')
+            )
             ->middleware([
-                EncryptCookies::class,
+                FilamentEncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
-                VerifyCsrfToken::class,
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
-                Authenticate::class,
-            ])
-        ;
+                FilamentAuthenticate::class,
+            ]);
     }
 }

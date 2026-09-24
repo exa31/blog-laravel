@@ -6,11 +6,6 @@ use App\Filament\Resources\PostResource;
 use App\Models\Post;
 use App\Models\SavePost;
 use Filament\Actions;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\RichEditor;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Form;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Storage;
 
@@ -18,83 +13,39 @@ class EditPost extends EditRecord
 {
     protected static string $resource = PostResource::class;
 
-    public function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                TextInput::make('title')->required(),
-                FileUpload::make('image_thumbnail')
-                    ->image()
-                    ->default(fn($record) => $record->image_thumbnail)
-                    ->maxSize('2048')
-                    ->disk('public')
-                    ->directory('images')
-                    ->required(),
-                RichEditor::make('content')
-                    ->fileAttachmentsDisk('public')
-                    ->disableToolbarButtons(
-                        [
-                            'attachFiles'
-                        ]
-                    )
-                    ->fileAttachmentsDirectory('attachments')
-                    ->required(),
-                ToggleButtons::make('status')
-                    ->options([
-                        'draft' => 'Draft',
-                        'published' => 'Published',
-                    ])
-                    ->default(state: fn($record) => $record->status)
-                    ->inline()
-                    ->required(),
-            ])
-            ->columns(1);
-    }
-
     protected function getHeaderActions(): array
     {
         return [
             Actions\DeleteAction::make()
                 ->before(
-                // yg di comment itu cara ngecek pake regex
                     function ($record) {
-                        $oldImageThumbnail = explode('/', $record->image_thumbnail);
-                        // $oldFileAttachment = $record->content;
-                        // $pattern = '/storage\/(.+?)(?:&|$)/';
-                        $url = Storage::disk('public')->exists('images/' . $oldImageThumbnail[1]);
-                        if ($url) {
-                            Storage::disk('public')->delete('images/' . $oldImageThumbnail[1]);
+                        if ($record->image_thumbnail && ! str_starts_with($record->image_thumbnail, 'http')) {
+                            $disk = config('filesystems.default', 'public');
+                            if (Storage::disk($disk)->exists($record->image_thumbnail)) {
+                                Storage::disk($disk)->delete($record->image_thumbnail);
+                            }
                         }
-                        // if (preg_match_all($pattern, $oldFileAttachment, $matches)) {
-                        //     $key = 1;
-                        //     for ($i = 1; $i <= count($matches[1]) / 3; $i++) {
-                        //         $url = Storage::disk('public')->exists($matches[1][$key]);
-                        //         if ($url) {
-                        //             Storage::disk('public')->delete($matches[1][$key]);
-                        //         }
-                        //         $key += 3;
-                        //     }
-                        // }
                     }
-                )
+                ),
         ];
     }
-
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $lastPost = Post::firstWhere('id', $this->record->id);
-        if ($lastPost->image_thumbnail !== $data['image_thumbnail']) {
-            $oldImageThumbnail = explode('/', $lastPost->image_thumbnail);
-            $url = Storage::disk('public')->exists('images/' . $oldImageThumbnail[1]);
-            if ($url) {
-                Storage::disk('public')->delete('images/' . $oldImageThumbnail[1]);
+        if ($lastPost && $lastPost->image_thumbnail !== ($data['image_thumbnail'] ?? null)) {
+            if ($lastPost->image_thumbnail && ! str_starts_with($lastPost->image_thumbnail, 'http')) {
+                $disk = config('filesystems.default', 'public');
+                if (Storage::disk($disk)->exists($lastPost->image_thumbnail)) {
+                    Storage::disk($disk)->delete($lastPost->image_thumbnail);
+                }
             }
         }
-        if ($data['status'] === 'draft') {
+        if (($data['status'] ?? null) === 'draft') {
             SavePost::where('post_id', $this->record->id)
                 ->delete();
         }
+
         return $data;
     }
 
@@ -103,7 +54,7 @@ class EditPost extends EditRecord
         return $this->record->id;
     }
 
-    protected function getRedirectUrl(): string|null
+    protected function getRedirectUrl(): ?string
     {
         return $this->getResource()::getUrl('index');
     }
