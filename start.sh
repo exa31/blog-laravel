@@ -12,9 +12,9 @@ fi
 echo "Mengatur permission..."
 chown -R www-data:www-data /app/storage /app/public/storage /app/bootstrap/cache
 
-# Jalankan database migrations otomatis
-echo "Menjalankan database migration..."
-php artisan migrate --force --graceful
+# Jalankan database migrations secara async di background
+echo "Menjalankan database migration di background..."
+(php artisan migrate --force --graceful || true) &
 
 # Jalankan Laravel Octane dengan FrankenPHP
 echo "Menjalankan Laravel dengan octane FrankenPHP..."
