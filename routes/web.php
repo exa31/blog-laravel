@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppleAuthController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\GoogleAuthController;
@@ -22,8 +23,21 @@ Route::post('/login', [AuthController::class, 'loginPost'])->name('login.post');
 Route::get('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/register', [AuthController::class, 'registerPost'])->name('register.post');
 Route::post('/refresh', [AuthController::class, 'refreshToken'])->name('auth.refresh');
+
+// Google OAuth
 Route::get('/auth/google', [GoogleAuthController::class, 'google'])->name('auth.google');
 Route::get('/auth/google-callback', [GoogleAuthController::class, 'googleRedirect'])->name('auth.google.callback');
+
+// Apple OAuth & Server-to-Server Notifications
+Route::get('/auth/apple', [AppleAuthController::class, 'apple'])->name('auth.apple');
+Route::match(['get', 'post'], '/auth/apple-callback', [AppleAuthController::class, 'appleRedirect'])->name('auth.apple.callback');
+Route::post('/auth/apple/webhook', [AppleAuthController::class, 'webhook'])->name('auth.apple.webhook');
+
+// Forgot & Reset Password routes (Resend Email)
+Route::get('/forgot-password', [AuthController::class, 'forgotPassword'])->name('password.request');
+Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->name('password.email');
+Route::get('/reset-password/{token}', [AuthController::class, 'resetPasswordPage'])->name('password.reset');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 
 // Protected routes (JWT Authenticated)
 Route::middleware('jwt.auth')->group(function () {
@@ -37,4 +51,8 @@ Route::middleware('jwt.auth')->group(function () {
     Route::post('/comments/replies', [ReplyController::class, 'store'])->name('replies.store');
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar');
     Route::delete('/profile/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.avatar.delete');
+
+    // OAuth Unbind / Disconnect Endpoints
+    Route::post('/auth/apple/unbind', [AppleAuthController::class, 'unbind'])->name('auth.apple.unbind');
+    Route::post('/auth/google/unbind', [GoogleAuthController::class, 'unbind'])->name('auth.google.unbind');
 });

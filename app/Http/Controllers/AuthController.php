@@ -4,17 +4,24 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\JwtService;
+use App\Services\ResendMailService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AuthController extends Controller
 {
-    public function __construct(protected JwtService $jwtService) {}
+    public function __construct(
+        protected JwtService $jwtService,
+        protected ResendMailService $resendMailService
+    ) {}
 
     public function login(): Response|RedirectResponse
     {
@@ -215,5 +222,143 @@ class AuthController extends Controller
         }
 
         return $response;
+    }
+
+    /**
+     * Show Forgot Password request form.
+     */
+    public function forgotPassword(): Response|RedirectResponse
+    {
+        if (Auth::check()) {
+            return redirect()->route('home');
+        }
+
+        return Inertia::render('ForgotPassword');
+    }
+
+    /**
+     * Send password reset link email via Resend.
+     */
+    public function sendResetLinkEmail(Request $request): JsonResponse|RedirectResponse
+    {
+        $validated = $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if ($user) {
+            $plainToken = Str::random(64);
+
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $user->email],
+                [
+                    'token' => Hash::make($plainToken),
+                    'created_at' => now(),
+                ]
+            );
+
+            // Dispatch email via Resend service
+            $this->resendMailService->sendPasswordResetEmail($user, $plainToken);
+        }
+
+        $successMessage = 'If that email address exists in our database, we have sent a password reset link.';
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => $successMessage,
+            ]);
+        }
+
+        return redirect()->back()->with('message', $successMessage);
+    }
+
+    /**
+     * Show Reset Password form.
+     */
+    public function resetPasswordPage(Request $request, string $token): Response|RedirectResponse
+    {
+        if (Auth::check()) {
+            return redirect()->route('home');
+        }
+
+        return Inertia::render('ResetPassword', [
+            'token' => $token,
+            'email' => $request->query('email', ''),
+        ]);
+    }
+
+    /**
+     * Handle Password Reset submission.
+     */
+    public function resetPassword(Request $request): JsonResponse|RedirectResponse
+    {
+        $validated = $request->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|min:8|same:password_confirm',
+            'password_confirm' => 'required|min:8',
+        ]);
+
+        $record = DB::table('password_reset_tokens')->where('email', $validated['email'])->first();
+
+        if (! $record || ! Hash::check($validated['token'], $record->token)) {
+            return redirect()->back()->withErrors([
+                'invalid' => 'This password reset link is invalid or has expired. Please request a new one.',
+            ])->withInput();
+        }
+
+        // Check if token expired (valid for 60 minutes)
+        if (Carbon::parse($record->created_at)->addMinutes(60)->isPast()) {
+            DB::table('password_reset_tokens')->where('email', $validated['email'])->delete();
+
+            return redirect()->back()->withErrors([
+                'invalid' => 'This password reset link has expired. Please request a new one.',
+            ])->withInput();
+        }
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if (! $user) {
+            return redirect()->back()->withErrors([
+                'invalid' => 'User account not found.',
+            ])->withInput();
+        }
+
+        // Update password and clean up reset token
+        $user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        DB::table('password_reset_tokens')->where('email', $validated['email'])->delete();
+
+        // Revoke old tokens & log user in
+        $this->jwtService->revokeAllUserTokens($user->id);
+        $tokens = $this->jwtService->generateTokens($user);
+        $accessCookie = $this->jwtService->getAccessTokenCookie($tokens['access_token']);
+        $refreshCookie = $this->jwtService->getRefreshTokenCookie($tokens['refresh_token']);
+        Auth::setUser($user);
+        Auth::guard('web')->login($user, true);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => 'Your password has been reset successfully!',
+                'access_token' => $tokens['access_token'],
+                'refresh_token' => $tokens['refresh_token'],
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'avatar' => $user->avatar,
+                ],
+            ])
+                ->withCookie($accessCookie)
+                ->withCookie($refreshCookie);
+        }
+
+        return redirect()->route('home')
+            ->with('message', 'Your password has been reset successfully!')
+            ->withCookie($accessCookie)
+            ->withCookie($refreshCookie);
     }
 }

@@ -31,6 +31,10 @@ class User extends Authenticatable implements FilamentUser
         'name',
         'avatar',
         'email',
+        'google_id',
+        'apple_id',
+        'auth_provider',
+        'email_verified_at',
         'password',
     ];
 
@@ -51,6 +55,7 @@ class User extends Authenticatable implements FilamentUser
      */
     protected $casts = [
         'password' => 'hashed',
+        'email_verified_at' => 'datetime',
     ];
 
     /**
@@ -60,7 +65,35 @@ class User extends Authenticatable implements FilamentUser
      */
     protected $appends = [
         'avatar_url',
+        'has_google_auth',
+        'has_apple_auth',
+        'can_unbind_apple',
     ];
+
+    /**
+     * Check if user has Google authentication linked.
+     */
+    public function getHasGoogleAuthAttribute(): bool
+    {
+        return ! empty($this->google_id);
+    }
+
+    /**
+     * Check if user has Apple authentication linked.
+     */
+    public function getHasAppleAuthAttribute(): bool
+    {
+        return ! empty($this->apple_id);
+    }
+
+    /**
+     * Check if user is allowed to unbind Apple ID.
+     * Rule: If user registered via Apple or has Apple bound, they can ONLY unbind Apple if Google ID is linked.
+     */
+    public function getCanUnbindAppleAttribute(): bool
+    {
+        return ! empty($this->apple_id) && ! empty($this->google_id);
+    }
 
     /**
      * Get the resolved public URL for the user's avatar.
