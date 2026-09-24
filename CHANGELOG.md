@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/exa31/blog-laravel/compare/v1.2.0...v1.3.0) (2026-09-24)
+
+
+### Features
+
+* **auth:** add set-password step for Google and Apple sign in registrations ([6af9903](https://github.com/exa31/blog-laravel/commit/6af9903adef272259cee11f8eb47fd81c3e7823f))
+
 # [1.2.0](https://github.com/exa31/blog-laravel/compare/v1.1.1...v1.2.0) (2026-09-24)
 
 
