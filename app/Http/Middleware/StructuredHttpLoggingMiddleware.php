@@ -75,6 +75,7 @@ class StructuredHttpLoggingMiddleware
 
         // Format concise summary message
         $message = "HTTP {$method} {$path} {$status} ({$durationMs}ms)";
+        error_log("🌐 {$message}");
 
         if ($status >= 500) {
             Log::error($message, $context);

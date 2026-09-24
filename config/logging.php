@@ -55,8 +55,8 @@ return [
         'stack' => [
             'driver' => 'stack',
             'channels' => array_values(array_unique(array_filter(array_merge(
-                ['stdout'],
-                explode(',', env('LOG_STACK', 'stdout,single'))
+                ['stderr', 'stdout', 'errorlog'],
+                explode(',', env('LOG_STACK', 'stderr,stdout,errorlog,single'))
             )))),
             'ignore_exceptions' => false,
         ],

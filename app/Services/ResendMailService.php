@@ -19,7 +19,9 @@ class ResendMailService
         $fromName = config('mail.from.name') ?: env('MAIL_FROM_NAME', $appName);
         $resendApiKey = config('services.resend.key') ?: env('RESEND_KEY') ?: env('RESEND_API_KEY');
 
-        Log::info("📧 [Email Verification OTP] Target: {$user->email} | User: {$user->name} | Code: [ {$code} ] (Expires in 15 mins)");
+        $otpMsg = "📧 [Email Verification OTP] Target: {$user->email} | User: {$user->name} | Code: [ {$code} ] (Expires in 15 mins)";
+        Log::info($otpMsg);
+        error_log($otpMsg);
 
         $htmlContent = $this->buildVerificationCodeHtml($user->name, $code, $appName);
 
@@ -38,25 +40,33 @@ class ResendMailService
 
                 if ($response->successful()) {
                     $resendId = $response->json('id') ?? 'unknown';
-                    Log::info("✅ [Resend API Success] Verification code email dispatched to {$user->email}. Resend ID: {$resendId}");
+                    $successMsg = "✅ [Resend API Success] Verification code email dispatched to {$user->email}. Resend ID: {$resendId}";
+                    Log::info($successMsg);
+                    error_log($successMsg);
                     return true;
                 }
 
-                Log::error("❌ [Resend API Error {$response->status()}] Failed to send verification email to {$user->email}: " . $response->body(), [
+                $errorMsg = "❌ [Resend API Error {$response->status()}] Failed to send verification email to {$user->email}: " . $response->body();
+                Log::error($errorMsg, [
                     'from' => "{$fromName} <{$fromAddress}>",
                     'to' => $user->email,
                     'status' => $response->status(),
                     'response' => $response->json() ?? $response->body(),
                 ]);
+                error_log($errorMsg);
             } catch (\Throwable $e) {
-                Log::error("❌ [Resend Request Exception] Exception while connecting to Resend for {$user->email}: " . $e->getMessage(), [
+                $excMsg = "❌ [Resend Request Exception] Exception while connecting to Resend for {$user->email}: " . $e->getMessage();
+                Log::error($excMsg, [
                     'from' => "{$fromName} <{$fromAddress}>",
                     'to' => $user->email,
                     'error' => $e->getMessage(),
                 ]);
+                error_log($excMsg);
             }
         } else {
-            Log::warning("⚠️ [Resend Config] No RESEND_KEY found in configuration or .env. Please configure RESEND_KEY=re_... in .env.");
+            $warnMsg = "⚠️ [Resend Config] No RESEND_KEY found in configuration or .env. Please configure RESEND_KEY=re_... in .env.";
+            Log::warning($warnMsg);
+            error_log($warnMsg);
         }
 
         // Tier 2: Fallback to Laravel Mail
@@ -67,12 +77,16 @@ class ResendMailService
                     ->subject("{$code} is your {$appName} verification code");
             });
 
-            Log::info("✅ [Mailer Success] Verification code email sent via fallback mailer to {$user->email}");
+            $fallbackMsg = "✅ [Mailer Success] Verification code email sent via fallback mailer to {$user->email}";
+            Log::info($fallbackMsg);
+            error_log($fallbackMsg);
             return true;
         } catch (\Throwable $e) {
-            Log::error("❌ [Mailer Error] Failed to send verification code email via fallback mailer to {$user->email}: " . $e->getMessage(), [
+            $fallbackErr = "❌ [Mailer Error] Failed to send verification code email via fallback mailer to {$user->email}: " . $e->getMessage();
+            Log::error($fallbackErr, [
                 'error' => $e->getMessage(),
             ]);
+            error_log($fallbackErr);
             return false;
         }
     }
@@ -88,7 +102,9 @@ class ResendMailService
         $fromName = config('mail.from.name') ?: env('MAIL_FROM_NAME', $appName);
         $resendApiKey = config('services.resend.key') ?: env('RESEND_KEY') ?: env('RESEND_API_KEY');
 
-        Log::info("📧 [Password Reset Link] Target: {$user->email} | Link: {$resetUrl}");
+        $resetMsg = "📧 [Password Reset Link] Target: {$user->email} | Link: {$resetUrl}";
+        Log::info($resetMsg);
+        error_log($resetMsg);
 
         $htmlContent = $this->buildPasswordResetHtml($user->name, $resetUrl, $appName);
 
@@ -107,25 +123,33 @@ class ResendMailService
 
                 if ($response->successful()) {
                     $resendId = $response->json('id') ?? 'unknown';
-                    Log::info("✅ [Resend API Success] Password reset email dispatched to {$user->email}. Resend ID: {$resendId}");
+                    $successMsg = "✅ [Resend API Success] Password reset email dispatched to {$user->email}. Resend ID: {$resendId}";
+                    Log::info($successMsg);
+                    error_log($successMsg);
                     return true;
                 }
 
-                Log::error("❌ [Resend API Error {$response->status()}] Failed to send reset email to {$user->email}: " . $response->body(), [
+                $errorMsg = "❌ [Resend API Error {$response->status()}] Failed to send reset email to {$user->email}: " . $response->body();
+                Log::error($errorMsg, [
                     'from' => "{$fromName} <{$fromAddress}>",
                     'to' => $user->email,
                     'status' => $response->status(),
                     'response' => $response->json() ?? $response->body(),
                 ]);
+                error_log($errorMsg);
             } catch (\Throwable $e) {
-                Log::error("❌ [Resend Request Exception] Exception while connecting to Resend for {$user->email}: " . $e->getMessage(), [
+                $excMsg = "❌ [Resend Request Exception] Exception while connecting to Resend for {$user->email}: " . $e->getMessage();
+                Log::error($excMsg, [
                     'from' => "{$fromName} <{$fromAddress}>",
                     'to' => $user->email,
                     'error' => $e->getMessage(),
                 ]);
+                error_log($excMsg);
             }
         } else {
-            Log::warning("⚠️ [Resend Config] No RESEND_KEY found in configuration or .env. Please configure RESEND_KEY=re_... in .env.");
+            $warnMsg = "⚠️ [Resend Config] No RESEND_KEY found in configuration or .env. Please configure RESEND_KEY=re_... in .env.";
+            Log::warning($warnMsg);
+            error_log($warnMsg);
         }
 
         // Tier 2: Fallback to Laravel Mail (e.g. smtp, log, array during testing)
@@ -136,12 +160,16 @@ class ResendMailService
                     ->subject("Reset Your {$appName} Password");
             });
 
-            Log::info("✅ [Mailer Success] Password reset email sent via fallback mailer to {$user->email}");
+            $fallbackMsg = "✅ [Mailer Success] Password reset email sent via fallback mailer to {$user->email}";
+            Log::info($fallbackMsg);
+            error_log($fallbackMsg);
             return true;
         } catch (\Throwable $e) {
-            Log::error("❌ [Mailer Error] Failed to send password reset email via fallback mailer to {$user->email}: " . $e->getMessage(), [
+            $fallbackErr = "❌ [Mailer Error] Failed to send password reset email via fallback mailer to {$user->email}: " . $e->getMessage();
+            Log::error($fallbackErr, [
                 'error' => $e->getMessage(),
             ]);
+            error_log($fallbackErr);
             return false;
         }
     }
