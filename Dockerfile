@@ -9,25 +9,14 @@ RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 RUN npm run build
 
 # =============================
-# Stage 2: Vendor Dependencies
-# =============================
-FROM composer:2 AS composer-builder
-WORKDIR /app
-COPY composer.json composer.lock ./
-RUN composer install \
-    --no-dev \
-    --no-interaction \
-    --prefer-dist \
-    --optimize-autoloader \
-    --no-scripts \
-    --ignore-platform-reqs
-
-# =============================
-# Stage 3: Production Runtime
+# Stage 2: Production Runtime
 # =============================
 FROM dunglas/frankenphp:php8.4-alpine
 
-# Install only required PHP extensions via built-in helper (strips compilation headers automatically)
+# Install official Composer binary
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Install required PHP extensions via FrankenPHP built-in helper
 RUN install-php-extensions \
     pdo_pgsql \
     pdo_mysql \
@@ -47,9 +36,17 @@ WORKDIR /app
 # Copy application source code
 COPY . .
 
-# Copy production vendor from composer-builder and compiled assets from frontend
-COPY --from=composer-builder /app/vendor ./vendor
+# Copy compiled frontend assets from Stage 1
 COPY --from=frontend /app/public/build ./public/build
+
+# Install production PHP dependencies and clean up cache/binary
+RUN composer install \
+    --no-dev \
+    --no-interaction \
+    --prefer-dist \
+    --optimize-autoloader \
+    --no-progress && \
+    rm -rf /root/.composer/cache /usr/bin/composer
 
 # Setup storage and cache permissions
 RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache && \
