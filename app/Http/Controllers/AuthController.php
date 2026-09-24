@@ -156,6 +156,8 @@ class AuthController extends Controller
             return redirect()->route('verification.notice')
                 ->with('message', 'Registration successful! Please enter the 6-digit code sent to your email.');
         } catch (\Throwable $e) {
+            Log::error('Registration exception: '.$e->getMessage(), ['exception' => $e]);
+
             return redirect()->back()->withErrors([
                 'error' => 'An error occurred during registration. Please try again.',
             ])->withInput();

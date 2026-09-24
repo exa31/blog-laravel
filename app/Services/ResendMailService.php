@@ -17,7 +17,9 @@ class ResendMailService
         $appName = config('app.name', 'E-Blog');
         $fromAddress = config('mail.from.address', 'no-reply@eka-dev.cloud');
         $fromName = config('mail.from.name', $appName);
-        $resendApiKey = config('services.resend.key');
+        $resendApiKey = config('services.resend.key') ?: env('RESEND_KEY') ?: env('RESEND_API_KEY');
+
+        Log::info("📧 [Email Verification OTP] Target: {$user->email} | User: {$user->name} | Code: [ {$code} ] (Expires in 15 mins)");
 
         $htmlContent = $this->buildVerificationCodeHtml($user->name, $code, $appName);
 
@@ -32,11 +34,17 @@ class ResendMailService
                     'html' => $htmlContent,
                 ]);
 
-                Log::info("Verification code email sent via Resend to {$user->email}. Resend ID: " . ($response->id ?? 'unknown'));
+                Log::info("✅ [Resend API Success] Verification code email dispatched to {$user->email}. Resend ID: " . ($response->id ?? 'unknown'));
                 return true;
             } catch (\Throwable $e) {
-                Log::warning("Resend API failed to send verification email to {$user->email}: " . $e->getMessage() . ". Falling back to default mailer.");
+                Log::error("❌ [Resend API Error] Failed to send verification email to {$user->email}: " . $e->getMessage() . ". Falling back to default mailer.", [
+                    'from' => "{$fromName} <{$fromAddress}>",
+                    'to' => $user->email,
+                    'error' => $e->getMessage(),
+                ]);
             }
+        } else {
+            Log::warning("⚠️ [Resend Config] No RESEND_KEY found in configuration. Trying fallback mailer.");
         }
 
         // Tier 2: Fallback to Laravel Mail
@@ -47,10 +55,12 @@ class ResendMailService
                     ->subject("{$code} is your {$appName} verification code");
             });
 
-            Log::info("Verification code email sent via fallback mailer to {$user->email}");
+            Log::info("✅ [Mailer Success] Verification code email sent via fallback mailer to {$user->email}");
             return true;
         } catch (\Throwable $e) {
-            Log::error("Failed to send verification code email via fallback mailer to {$user->email}: " . $e->getMessage());
+            Log::error("❌ [Mailer Error] Failed to send verification code email via fallback mailer to {$user->email}: " . $e->getMessage(), [
+                'error' => $e->getMessage(),
+            ]);
             return false;
         }
     }
@@ -64,7 +74,9 @@ class ResendMailService
         $appName = config('app.name', 'E-Blog');
         $fromAddress = config('mail.from.address', 'no-reply@eka-dev.cloud');
         $fromName = config('mail.from.name', $appName);
-        $resendApiKey = config('services.resend.key');
+        $resendApiKey = config('services.resend.key') ?: env('RESEND_KEY') ?: env('RESEND_API_KEY');
+
+        Log::info("📧 [Password Reset Link] Target: {$user->email} | Link: {$resetUrl}");
 
         $htmlContent = $this->buildPasswordResetHtml($user->name, $resetUrl, $appName);
 
@@ -79,11 +91,17 @@ class ResendMailService
                     'html' => $htmlContent,
                 ]);
 
-                Log::info("Password reset email sent via Resend to {$user->email}. Resend ID: " . ($response->id ?? 'unknown'));
+                Log::info("✅ [Resend API Success] Password reset email dispatched to {$user->email}. Resend ID: " . ($response->id ?? 'unknown'));
                 return true;
             } catch (\Throwable $e) {
-                Log::warning("Resend API failed to send reset email to {$user->email}: " . $e->getMessage() . ". Falling back to default mailer.");
+                Log::error("❌ [Resend API Error] Failed to send reset email to {$user->email}: " . $e->getMessage() . ". Falling back to default mailer.", [
+                    'from' => "{$fromName} <{$fromAddress}>",
+                    'to' => $user->email,
+                    'error' => $e->getMessage(),
+                ]);
             }
+        } else {
+            Log::warning("⚠️ [Resend Config] No RESEND_KEY found in configuration. Trying fallback mailer.");
         }
 
         // Tier 2: Fallback to Laravel Mail (e.g. smtp, log, array during testing)
@@ -94,10 +112,12 @@ class ResendMailService
                     ->subject("Reset Your {$appName} Password");
             });
 
-            Log::info("Password reset email sent via fallback mailer to {$user->email}");
+            Log::info("✅ [Mailer Success] Password reset email sent via fallback mailer to {$user->email}");
             return true;
         } catch (\Throwable $e) {
-            Log::error("Failed to send password reset email via fallback mailer to {$user->email}: " . $e->getMessage());
+            Log::error("❌ [Mailer Error] Failed to send password reset email via fallback mailer to {$user->email}: " . $e->getMessage(), [
+                'error' => $e->getMessage(),
+            ]);
             return false;
         }
     }
