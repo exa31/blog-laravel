@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Mockery;
@@ -27,7 +28,7 @@ class GoogleAuthTest extends TestCase
         $this->assertStringContainsString('accounts.google.com', $response->headers->get('Location'));
     }
 
-    public function test_google_callback_creates_new_user(): void
+    public function test_google_callback_redirects_new_user_to_set_password_and_creates_account(): void
     {
         $googleUser = Mockery::mock(SocialiteUser::class);
         $googleUser->shouldReceive('getId')->andReturn('google_id_12345');
@@ -41,8 +42,22 @@ class GoogleAuthTest extends TestCase
 
         Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
 
+        // 1. Google OAuth callback redirects to set-password
         $response = $this->get(route('auth.google.callback'));
-        $response->assertRedirect(route('home'));
+        $response->assertRedirect(route('auth.set-password'));
+        $response->assertSessionHas('oauth_pending_user');
+
+        // 2. View set-password page
+        $pageResponse = $this->get(route('auth.set-password'));
+        $pageResponse->assertStatus(200);
+
+        // 3. User submits their chosen password
+        $submitResponse = $this->post(route('auth.set-password.store'), [
+            'password' => 'super_secret_password_123',
+            'password_confirm' => 'super_secret_password_123',
+        ]);
+
+        $submitResponse->assertRedirect(route('home'));
 
         $this->assertDatabaseHas('users', [
             'email' => 'alex.google@example.com',
@@ -50,6 +65,9 @@ class GoogleAuthTest extends TestCase
             'name' => 'Alex Google',
             'auth_provider' => 'google',
         ]);
+
+        $createdUser = User::where('email', 'alex.google@example.com')->first();
+        $this->assertTrue(Hash::check('super_secret_password_123', $createdUser->password));
         $this->assertTrue(Auth::check());
     }
 

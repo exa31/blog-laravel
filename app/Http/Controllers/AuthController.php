@@ -361,4 +361,108 @@ class AuthController extends Controller
             ->withCookie($accessCookie)
             ->withCookie($refreshCookie);
     }
+
+    /**
+     * Show Set Password form for OAuth sign-ins.
+     */
+    public function showSetPassword(): Response|RedirectResponse
+    {
+        if (Auth::check()) {
+            return redirect()->route('home');
+        }
+
+        $pending = session('oauth_pending_user');
+        if (! $pending) {
+            return redirect()->route('login')->withErrors([
+                'invalid' => 'No pending authentication found. Please sign in again.',
+            ]);
+        }
+
+        return Inertia::render('SetPassword', [
+            'oauthUser' => $pending,
+        ]);
+    }
+
+    /**
+     * Handle Password submission for OAuth registrations.
+     */
+    public function storeSetPassword(Request $request): JsonResponse|RedirectResponse
+    {
+        $validated = $request->validate([
+            'password' => 'required|min:8|same:password_confirm',
+            'password_confirm' => 'required|min:8',
+        ]);
+
+        $pending = session('oauth_pending_user');
+        if (! $pending) {
+            return redirect()->route('login')->withErrors([
+                'invalid' => 'Session expired. Please sign in with Google or Apple again.',
+            ]);
+        }
+
+        $email = $pending['email'];
+        $user = User::where('email', $email)->first();
+
+        if ($user) {
+            $updateData = [
+                'password' => Hash::make($validated['password']),
+                'email_verified_at' => now(),
+            ];
+            if ($pending['provider'] === 'google') {
+                $updateData['google_id'] = $pending['provider_id'];
+            } elseif ($pending['provider'] === 'apple') {
+                $updateData['apple_id'] = $pending['provider_id'];
+            }
+            $user->update($updateData);
+        } else {
+            $user = User::create([
+                'name' => $pending['name'],
+                'email' => $email,
+                'avatar' => $pending['avatar'],
+                'google_id' => $pending['provider'] === 'google' ? $pending['provider_id'] : null,
+                'apple_id' => $pending['provider'] === 'apple' ? $pending['provider_id'] : null,
+                'auth_provider' => $pending['provider'],
+                'email_verified_at' => now(),
+                'password' => Hash::make($validated['password']),
+            ]);
+        }
+
+        session()->forget('oauth_pending_user');
+
+        $tokens = $this->jwtService->generateTokens($user);
+        $accessCookie = $this->jwtService->getAccessTokenCookie($tokens['access_token']);
+        $refreshCookie = $this->jwtService->getRefreshTokenCookie($tokens['refresh_token']);
+        Auth::setUser($user);
+        Auth::guard('web')->login($user, true);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => 'Password created and account setup successfully!',
+                'access_token' => $tokens['access_token'],
+                'refresh_token' => $tokens['refresh_token'],
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'avatar' => $user->avatar,
+                ],
+            ], 201)
+                ->withCookie($accessCookie)
+                ->withCookie($refreshCookie);
+        }
+
+        return redirect()->route('home')
+            ->with('message', 'Password created and account setup successfully!')
+            ->withCookie($accessCookie)
+            ->withCookie($refreshCookie);
+    }
+
+    /**
+     * Cancel OAuth set-password flow.
+     */
+    public function cancelSetPassword(): RedirectResponse
+    {
+        session()->forget('oauth_pending_user');
+        return redirect()->route('login');
+    }
 }

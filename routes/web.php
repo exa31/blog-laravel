@@ -39,6 +39,11 @@ Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->
 Route::get('/reset-password/{token}', [AuthController::class, 'resetPasswordPage'])->name('password.reset');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 
+// OAuth Set Password Flow
+Route::get('/auth/set-password', [AuthController::class, 'showSetPassword'])->name('auth.set-password');
+Route::post('/auth/set-password', [AuthController::class, 'storeSetPassword'])->name('auth.set-password.store');
+Route::post('/auth/set-password/cancel', [AuthController::class, 'cancelSetPassword'])->name('auth.set-password.cancel');
+
 // Protected routes (JWT Authenticated)
 Route::middleware('jwt.auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

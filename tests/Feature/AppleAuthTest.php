@@ -34,7 +34,7 @@ class AppleAuthTest extends TestCase
         $this->assertStringContainsString('appleid.apple.com', $response->headers->get('Location'));
     }
 
-    public function test_apple_callback_creates_new_user(): void
+    public function test_apple_callback_redirects_new_user_to_set_password_and_creates_account(): void
     {
         $appleSub = '001234.567890abcdef.1234';
         $appleEmail = 'user@privaterelay.appleid.com';
@@ -47,6 +47,7 @@ class AppleAuthTest extends TestCase
         ]);
         $this->app->instance(AppleTokenService::class, $mockTokenService);
 
+        // 1. Apple callback redirects to set-password
         $response = $this->post(route('auth.apple.callback'), [
             'id_token' => 'dummy.jwt.token',
             'user' => json_encode([
@@ -58,13 +59,26 @@ class AppleAuthTest extends TestCase
             ]),
         ]);
 
-        $response->assertRedirect(route('home'));
+        $response->assertRedirect(route('auth.set-password'));
+        $response->assertSessionHas('oauth_pending_user');
+
+        // 2. User enters their desired password
+        $submitResponse = $this->post(route('auth.set-password.store'), [
+            'password' => 'apple_custom_pass_888',
+            'password_confirm' => 'apple_custom_pass_888',
+        ]);
+
+        $submitResponse->assertRedirect(route('home'));
+
         $this->assertDatabaseHas('users', [
             'apple_id' => $appleSub,
             'email' => $appleEmail,
             'name' => 'Steve Jobs',
             'auth_provider' => 'apple',
         ]);
+
+        $createdUser = User::where('apple_id', $appleSub)->first();
+        $this->assertTrue(Hash::check('apple_custom_pass_888', $createdUser->password));
         $this->assertTrue(Auth::check());
     }
 

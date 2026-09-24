@@ -147,7 +147,7 @@ class AppleAuthController extends Controller
             }
         }
 
-        // Case 4: Create new user registered via Apple ID
+        // Case 4: New user registration via Apple ID -> Redirect to Set Password flow
         if (! $user) {
             $resolvedEmail = $email ?? ($appleId.'@privaterelay.appleid.com');
             $resolvedName = ! empty($name) ? $name : 'Apple User';
@@ -157,15 +157,17 @@ class AppleAuthController extends Controller
             $secondInitial = $nameParts[1][0] ?? '';
             $avatar = strtoupper($firstInitial.$secondInitial);
 
-            $user = User::create([
-                'name' => $resolvedName,
-                'email' => $resolvedEmail,
-                'avatar' => $avatar,
-                'apple_id' => $appleId,
-                'auth_provider' => 'apple',
-                'email_verified_at' => now(),
-                'password' => Hash::make(Str::random(32)),
+            session([
+                'oauth_pending_user' => [
+                    'name' => $resolvedName,
+                    'email' => $resolvedEmail,
+                    'avatar' => $avatar,
+                    'provider' => 'apple',
+                    'provider_id' => $appleId,
+                ],
             ]);
+
+            return redirect()->route('auth.set-password');
         }
 
         // Issue JWT tokens and cookies

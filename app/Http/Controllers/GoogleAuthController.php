@@ -94,30 +94,32 @@ class GoogleAuthController extends Controller
             }
         }
 
-        // Case 4: Register new user
+        // Case 4: New user registration via Google -> Redirect to Set Password flow
         if (! $user) {
             $nameParts = array_values(array_filter(explode(' ', trim($name))));
             $firstInitial = $nameParts[0][0] ?? 'U';
             $secondInitial = $nameParts[1][0] ?? '';
             $avatar = strtoupper($firstInitial.$secondInitial);
 
-            $user = User::create([
-                'name' => $name,
-                'email' => $googleEmail,
-                'avatar' => $avatar,
-                'google_id' => $googleId,
-                'auth_provider' => 'google',
-                'email_verified_at' => now(),
-                'password' => Hash::make(Str::random(32)),
-            ]);
-        } else {
-            // Ensure primary email is kept up-to-date with verified Google email
-            if ($user->email !== $googleEmail) {
-                $user->update([
+            session([
+                'oauth_pending_user' => [
+                    'name' => $name,
                     'email' => $googleEmail,
-                    'email_verified_at' => now(),
-                ]);
-            }
+                    'avatar' => $avatar,
+                    'provider' => 'google',
+                    'provider_id' => $googleId,
+                ],
+            ]);
+
+            return redirect()->route('auth.set-password');
+        }
+
+        // Ensure primary email is kept up-to-date with verified Google email
+        if ($user->email !== $googleEmail) {
+            $user->update([
+                'email' => $googleEmail,
+                'email_verified_at' => now(),
+            ]);
         }
 
         $tokens = $this->jwtService->generateTokens($user);
