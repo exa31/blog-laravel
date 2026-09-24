@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    uses: exa31/github-workflows/.github/workflows/backend.yml@main
+    uses: exa31/github-workflows/.github/workflows/backend.yml@v1.0.0
     with:
       app_name: e-blog
       namespace: e-blog
