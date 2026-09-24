@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/exa31/blog-laravel/compare/v1.1.1...v1.2.0) (2026-09-24)
+
+
+### Features
+
+* **auth:** add apple sign in, revocation webhook, resend forgot password, and identity binding rules ([ac823c5](https://github.com/exa31/blog-laravel/commit/ac823c5567c90415b560d23a15317ac980048e77))
+
 ## [1.1.1](https://github.com/exa31/blog-laravel/compare/v1.1.0...v1.1.1) (2026-09-24)
 
 
