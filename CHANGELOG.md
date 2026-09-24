@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/exa31/blog-laravel/compare/v1.8.2...v1.9.0) (2026-09-24)
+
+
+### Features
+
+* **logging:** add verbose email debugging and enable octane request access logs ([e5a336e](https://github.com/exa31/blog-laravel/commit/e5a336eb22b76470a8995721bb8951e899344ebe))
+
 ## [1.8.2](https://github.com/exa31/blog-laravel/compare/v1.8.1...v1.8.2) (2026-09-24)
 
 
