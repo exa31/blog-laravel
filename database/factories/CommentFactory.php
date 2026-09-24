@@ -27,8 +27,8 @@ class CommentFactory extends Factory
         return [
             'user_id' => User::factory(),
             'post_id' => Post::factory(),
-            'content' => fake()->boolean(70) ? fake()->randomElement(self::$sampleComments) : fake()->paragraph(2),
-            'created_at' => fake()->dateTimeBetween('-1 month', 'now'),
+            'content' => $this->faker->boolean(70) ? $this->faker->randomElement(self::$sampleComments) : $this->faker->paragraph(2),
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
             'updated_at' => now(),
         ];
     }

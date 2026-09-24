@@ -49,11 +49,11 @@ class PostFactory extends Factory
 
     public function definition(): array
     {
-        $topic = fake()->randomElement(self::$sampleTopics);
-        $title = fake()->boolean(70) ? $topic['title'].' '.fake()->words(2, true) : fake()->sentence(6);
+        $topic = $this->faker->randomElement(self::$sampleTopics);
+        $title = $this->faker->boolean(70) ? $topic['title'].' '.$this->faker->words(2, true) : $this->faker->sentence(6);
         $slug = Str::slug($title).'-'.Str::random(5);
 
-        $paragraphs = fake()->paragraphs(4);
+        $paragraphs = $this->faker->paragraphs(4);
         $content = "<h2>Introduction</h2><p>{$topic['summary']}</p>".
             "<p>{$paragraphs[0]}</p>".
             '<h3>Key Architectural Insights</h3>'.
@@ -70,8 +70,8 @@ class PostFactory extends Factory
             'content' => $content,
             'status' => 'published',
             'image_thumbnail' => $topic['image'],
-            'like' => fake()->numberBetween(0, 45),
-            'created_at' => fake()->dateTimeBetween('-2 months', 'now'),
+            'like' => $this->faker->numberBetween(0, 45),
+            'created_at' => $this->faker->dateTimeBetween('-2 months', 'now'),
             'updated_at' => now(),
         ];
     }

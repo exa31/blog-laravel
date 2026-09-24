@@ -18,7 +18,7 @@ class UserFactory extends Factory
 
     public function definition(): array
     {
-        $name = fake()->name();
+        $name = $this->faker->name();
         $nameParts = array_values(array_filter(explode(' ', trim($name))));
         $firstInitial = $nameParts[0][0] ?? 'U';
         $secondInitial = isset($nameParts[1][0]) ? $nameParts[1][0] : '';
@@ -26,7 +26,7 @@ class UserFactory extends Factory
 
         return [
             'name' => $name,
-            'email' => fake()->unique()->safeEmail(),
+            'email' => $this->faker->unique()->safeEmail(),
             'avatar' => $avatar,
             'password' => static::$password ??= Hash::make('password123'),
             'remember_token' => Str::random(10),

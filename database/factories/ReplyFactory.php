@@ -26,8 +26,8 @@ class ReplyFactory extends Factory
         return [
             'user_id' => User::factory(),
             'comment_id' => Comment::factory(),
-            'body' => fake()->boolean(70) ? fake()->randomElement(self::$sampleReplies) : fake()->sentence(8),
-            'created_at' => fake()->dateTimeBetween('-2 weeks', 'now'),
+            'body' => $this->faker->boolean(70) ? $this->faker->randomElement(self::$sampleReplies) : $this->faker->sentence(8),
+            'created_at' => $this->faker->dateTimeBetween('-2 weeks', 'now'),
             'updated_at' => now(),
         ];
     }
