@@ -88,11 +88,32 @@ class User extends Authenticatable implements FilamentUser
 
     /**
      * Check if user is allowed to unbind Apple ID.
-     * Rule: If user registered via Apple or has Apple bound, they can ONLY unbind Apple if Google ID is linked.
+     * Rule: User can unbind Apple ID if they have another established identity
+     * (e.g. Google linked, registered via email/password, or verified non-relay email).
      */
     public function getCanUnbindAppleAttribute(): bool
     {
-        return ! empty($this->apple_id) && ! empty($this->google_id);
+        if (empty($this->apple_id)) {
+            return false;
+        }
+
+        // 1. If user has linked Google, they can unbind Apple
+        if (! empty($this->google_id)) {
+            return true;
+        }
+
+        // 2. If user has verified email that is not an Apple private relay, they can unbind Apple
+        $isAppleRelay = str_ends_with(strtolower($this->email ?? ''), '@privaterelay.appleid.com');
+        if (! empty($this->email_verified_at) && ! $isAppleRelay) {
+            return true;
+        }
+
+        // 3. If user registered via standard email & password, they can unbind Apple
+        if ($this->auth_provider === 'email' && ! empty($this->password)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

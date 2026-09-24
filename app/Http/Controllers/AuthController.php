@@ -47,6 +47,31 @@ class AuthController extends Controller
             ])->withInput();
         }
 
+        // If user registered with email and has not verified email yet, prompt verification
+        if ($user->auth_provider === 'email' && empty($user->email_verified_at)) {
+            $code = sprintf('%06d', random_int(100000, 999999));
+            DB::table('email_verification_codes')->updateOrInsert(
+                ['email' => $user->email],
+                [
+                    'code' => Hash::make($code),
+                    'created_at' => now(),
+                ]
+            );
+            $this->resendMailService->sendVerificationCodeEmail($user, $code);
+            session(['verify_email_address' => $user->email]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Please verify your email before logging in. We have sent a verification code to your email.',
+                    'requires_verification' => true,
+                    'email' => $user->email,
+                ], 403);
+            }
+
+            return redirect()->route('verification.notice')
+                ->with('message', 'Please verify your email before logging in. We have sent a verification code to your email.');
+        }
+
         $tokens = $this->jwtService->generateTokens($user);
         $accessCookie = $this->jwtService->getAccessTokenCookie($tokens['access_token']);
         $refreshCookie = $this->jwtService->getRefreshTokenCookie($tokens['refresh_token']);
@@ -103,40 +128,193 @@ class AuthController extends Controller
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'avatar' => $avatar,
+                'auth_provider' => 'email',
+                'email_verified_at' => null,
                 'password' => Hash::make($validated['password']),
             ]);
 
+            $code = sprintf('%06d', random_int(100000, 999999));
+            DB::table('email_verification_codes')->updateOrInsert(
+                ['email' => $user->email],
+                [
+                    'code' => Hash::make($code),
+                    'created_at' => now(),
+                ]
+            );
+
+            $this->resendMailService->sendVerificationCodeEmail($user, $code);
+            session(['verify_email_address' => $user->email]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Registration initiated. Please verify your email with the 6-digit code.',
+                    'requires_verification' => true,
+                    'email' => $user->email,
+                ], 201);
+            }
+
+            return redirect()->route('verification.notice')
+                ->with('message', 'Registration successful! Please enter the 6-digit code sent to your email.');
+        } catch (\Throwable $e) {
+            return redirect()->back()->withErrors([
+                'error' => 'An error occurred during registration. Please try again.',
+            ])->withInput();
+        }
+    }
+
+    /**
+     * Show Email Verification Code page.
+     */
+    public function verifyEmailPage(Request $request): Response|RedirectResponse
+    {
+        if (Auth::check() && Auth::user()->email_verified_at) {
+            return redirect()->route('home');
+        }
+
+        $email = session('verify_email_address') ?? $request->query('email');
+        if (empty($email)) {
+            return redirect()->route('register');
+        }
+
+        return Inertia::render('VerifyEmail', [
+            'email' => $email,
+        ]);
+    }
+
+    /**
+     * Verify 6-digit email verification code.
+     */
+    public function verifyEmailCode(Request $request): JsonResponse|RedirectResponse
+    {
+        $validated = $request->validate([
+            'email' => 'required|email',
+            'code' => 'required|digits:6',
+        ]);
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if (! $user) {
+            return redirect()->back()->withErrors([
+                'invalid' => 'User account not found.',
+            ])->withInput();
+        }
+
+        if (! empty($user->email_verified_at)) {
             $tokens = $this->jwtService->generateTokens($user);
             $accessCookie = $this->jwtService->getAccessTokenCookie($tokens['access_token']);
             $refreshCookie = $this->jwtService->getRefreshTokenCookie($tokens['refresh_token']);
             Auth::setUser($user);
             Auth::guard('web')->login($user, true);
 
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'message' => 'Registration successful',
-                    'access_token' => $tokens['access_token'],
-                    'refresh_token' => $tokens['refresh_token'],
-                    'user' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'avatar' => $user->avatar,
-                    ],
-                ], 201)
-                    ->withCookie($accessCookie)
-                    ->withCookie($refreshCookie);
-            }
-
             return redirect()->route('home')
-                ->with('message', 'Account registered successfully!')
+                ->with('message', 'Email is already verified. Logged in successfully!')
                 ->withCookie($accessCookie)
                 ->withCookie($refreshCookie);
-        } catch (\Throwable $e) {
+        }
+
+        $record = DB::table('email_verification_codes')->where('email', $validated['email'])->first();
+
+        if (! $record || ! Hash::check($validated['code'], $record->code)) {
             return redirect()->back()->withErrors([
-                'error' => 'An error occurred during registration. Please try again.',
+                'invalid' => 'Invalid verification code. Please check your email and try again.',
             ])->withInput();
         }
+
+        // Check if code has expired (15 minutes)
+        if (Carbon::parse($record->created_at)->addMinutes(15)->isPast()) {
+            DB::table('email_verification_codes')->where('email', $validated['email'])->delete();
+
+            return redirect()->back()->withErrors([
+                'invalid' => 'Verification code has expired. Please request a new code.',
+            ])->withInput();
+        }
+
+        // Mark user verified and remove code
+        $user->update([
+            'email_verified_at' => now(),
+        ]);
+
+        DB::table('email_verification_codes')->where('email', $validated['email'])->delete();
+        session()->forget('verify_email_address');
+
+        $tokens = $this->jwtService->generateTokens($user);
+        $accessCookie = $this->jwtService->getAccessTokenCookie($tokens['access_token']);
+        $refreshCookie = $this->jwtService->getRefreshTokenCookie($tokens['refresh_token']);
+        Auth::setUser($user);
+        Auth::guard('web')->login($user, true);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => 'Email verified successfully! Welcome to e-Blog.',
+                'access_token' => $tokens['access_token'],
+                'refresh_token' => $tokens['refresh_token'],
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'avatar' => $user->avatar,
+                ],
+            ], 200)
+                ->withCookie($accessCookie)
+                ->withCookie($refreshCookie);
+        }
+
+        return redirect()->route('home')
+            ->with('message', 'Email verified successfully! Welcome to e-Blog.')
+            ->withCookie($accessCookie)
+            ->withCookie($refreshCookie);
+    }
+
+    /**
+     * Resend 6-digit email verification code.
+     */
+    public function resendVerificationCode(Request $request): JsonResponse|RedirectResponse
+    {
+        $validated = $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if (! $user) {
+            return redirect()->back()->withErrors([
+                'invalid' => 'User account not found.',
+            ]);
+        }
+
+        if (! empty($user->email_verified_at)) {
+            return redirect()->route('login')->with('message', 'Your email is already verified. Please log in.');
+        }
+
+        $lastRecord = DB::table('email_verification_codes')->where('email', $validated['email'])->first();
+
+        // Rate limit: 60 seconds cooldown
+        if ($lastRecord && Carbon::parse($lastRecord->created_at)->addSeconds(60)->isFuture()) {
+            $secondsLeft = 60 - Carbon::parse($lastRecord->created_at)->diffInSeconds(now());
+            return redirect()->back()->withErrors([
+                'invalid' => "Please wait {$secondsLeft} seconds before requesting another code.",
+            ]);
+        }
+
+        $code = sprintf('%06d', random_int(100000, 999999));
+
+        DB::table('email_verification_codes')->updateOrInsert(
+            ['email' => $user->email],
+            [
+                'code' => Hash::make($code),
+                'created_at' => now(),
+            ]
+        );
+
+        $this->resendMailService->sendVerificationCodeEmail($user, $code);
+
+        $successMsg = 'A new 6-digit verification code has been sent to your email.';
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => $successMsg]);
+        }
+
+        return redirect()->back()->with('message', $successMsg);
     }
 
     /**

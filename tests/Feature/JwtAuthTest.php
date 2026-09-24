@@ -27,13 +27,38 @@ class JwtAuthTest extends TestCase
             'password_confirm' => 'secret1234',
         ]);
 
-        $response->assertRedirect('/');
-        $response->assertCookie('jwt_token');
-        $response->assertCookie('refresh_token');
+        $response->assertRedirect(route('verification.notice'));
+        $response->assertSessionHas('verify_email_address', 'jane@example.com');
 
         $user = User::where('email', 'jane@example.com')->first();
         $this->assertNotNull($user);
         $this->assertEquals('JD', $user->avatar);
+        $this->assertNull($user->email_verified_at);
+
+        // Verification code record is created in DB
+        $this->assertDatabaseHas('email_verification_codes', [
+            'email' => 'jane@example.com',
+        ]);
+
+        // Mock verification with code
+        $codeRecord = \Illuminate\Support\Facades\DB::table('email_verification_codes')->where('email', 'jane@example.com')->first();
+        // Since code is hashed in db, let's insert a known code to test verify endpoint
+        \Illuminate\Support\Facades\DB::table('email_verification_codes')->updateOrInsert(
+            ['email' => 'jane@example.com'],
+            ['code' => Hash::make('123456'), 'created_at' => now()]
+        );
+
+        $verifyResponse = $this->post('/verify-email', [
+            'email' => 'jane@example.com',
+            'code' => '123456',
+        ]);
+
+        $verifyResponse->assertRedirect('/');
+        $verifyResponse->assertCookie('jwt_token');
+        $verifyResponse->assertCookie('refresh_token');
+
+        $user->refresh();
+        $this->assertNotNull($user->email_verified_at);
 
         // Verify refresh token is saved in database
         $this->assertDatabaseHas('refresh_tokens', [

@@ -10,6 +10,52 @@ use Resend;
 class ResendMailService
 {
     /**
+     * Send 6-Digit Email Verification Code via Resend API (or fallback to standard Mail).
+     */
+    public function sendVerificationCodeEmail(User $user, string $code): bool
+    {
+        $appName = config('app.name', 'E-Blog');
+        $fromAddress = config('mail.from.address', 'no-reply@eka-dev.cloud');
+        $fromName = config('mail.from.name', $appName);
+        $resendApiKey = config('services.resend.key');
+
+        $htmlContent = $this->buildVerificationCodeHtml($user->name, $code, $appName);
+
+        // Tier 1: Send directly via Resend SDK if API key is provided
+        if (! empty($resendApiKey)) {
+            try {
+                $resend = Resend::client($resendApiKey);
+                $response = $resend->emails->send([
+                    'from' => "{$fromName} <{$fromAddress}>",
+                    'to' => [$user->email],
+                    'subject' => "{$code} is your {$appName} verification code",
+                    'html' => $htmlContent,
+                ]);
+
+                Log::info("Verification code email sent via Resend to {$user->email}. Resend ID: " . ($response->id ?? 'unknown'));
+                return true;
+            } catch (\Throwable $e) {
+                Log::warning("Resend API failed to send verification email to {$user->email}: " . $e->getMessage() . ". Falling back to default mailer.");
+            }
+        }
+
+        // Tier 2: Fallback to Laravel Mail
+        try {
+            Mail::html($htmlContent, function ($message) use ($user, $fromAddress, $fromName, $appName, $code) {
+                $message->to($user->email, $user->name)
+                    ->from($fromAddress, $fromName)
+                    ->subject("{$code} is your {$appName} verification code");
+            });
+
+            Log::info("Verification code email sent via fallback mailer to {$user->email}");
+            return true;
+        } catch (\Throwable $e) {
+            Log::error("Failed to send verification code email via fallback mailer to {$user->email}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Send Password Reset Email via Resend API (or fallback to standard Mail).
      */
     public function sendPasswordResetEmail(User $user, string $token): bool
@@ -42,11 +88,10 @@ class ResendMailService
 
         // Tier 2: Fallback to Laravel Mail (e.g. smtp, log, array during testing)
         try {
-            Mail::send([], [], function ($message) use ($user, $fromAddress, $fromName, $appName, $htmlContent) {
+            Mail::html($htmlContent, function ($message) use ($user, $fromAddress, $fromName, $appName) {
                 $message->to($user->email, $user->name)
                     ->from($fromAddress, $fromName)
-                    ->subject("Reset Your {$appName} Password")
-                    ->html($htmlContent);
+                    ->subject("Reset Your {$appName} Password");
             });
 
             Log::info("Password reset email sent via fallback mailer to {$user->email}");
@@ -115,15 +160,97 @@ class ResendMailService
                         </td>
                     </tr>
 
+                    <!-- Footer -->
+                    <tr>
+                        <td align="center" style="padding-top: 24px;">
+                            <p style="margin: 0; font-size: 11px; color: #4B5563;">
+                                &copy; {$year} {$appName}. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+HTML;
+    }
+
+    /**
+     * Build responsive HTML email template for 6-digit verification code.
+     */
+    protected function buildVerificationCodeHtml(string $userName, string $code, string $appName): string
+    {
+        $safeName = htmlspecialchars($userName, ENT_QUOTES, 'UTF-8');
+        $safeCode = htmlspecialchars($code, ENT_QUOTES, 'UTF-8');
+        $year = date('Y');
+
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Email</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0B0F19; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #E2E8F0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0B0F19; padding: 40px 16px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" style="max-width: 520px; background-color: #111827; border: 1px solid #1F2937; border-radius: 24px; padding: 40px 32px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);" cellspacing="0" cellpadding="0">
+                    <!-- Brand Header -->
+                    <tr>
+                        <td align="center" style="padding-bottom: 24px;">
+                            <div style="display: inline-block; width: 48px; height: 48px; line-height: 48px; border-radius: 14px; background: linear-gradient(135deg, #F59E0B, #D97706); color: #000; font-size: 22px; font-weight: 800; text-align: center;">
+                                E
+                            </div>
+                            <h1 style="margin: 16px 0 0; font-size: 22px; font-weight: 700; color: #F9FAFB; letter-spacing: -0.02em;">
+                                {$appName}
+                            </h1>
+                        </td>
+                    </tr>
+
+                    <!-- Divider & Body -->
+                    <tr>
+                        <td style="border-top: 1px solid #1F2937; padding-top: 24px;">
+                            <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 600; color: #F3F4F6;">
+                                Confirm Your Email Address
+                            </h2>
+                            <p style="margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: #9CA3AF;">
+                                Hello <strong style="color: #F3F4F6;">{$safeName}</strong>,
+                            </p>
+                            <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: #9CA3AF;">
+                                Thank you for creating your account on {$appName}. Please use the 6-digit verification code below to confirm your email and activate your account.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- 6-Digit Code Box -->
+                    <tr>
+                        <td align="center" style="padding-bottom: 24px;">
+                            <div style="background-color: #0B0F19; border: 1px solid #374151; border-radius: 16px; padding: 18px 24px; text-align: center; display: inline-block; min-width: 240px;">
+                                <span style="font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 32px; font-weight: 800; letter-spacing: 10px; color: #F59E0B; display: block; margin-right: -10px;">
+                                    {$safeCode}
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Expiration Notice -->
+                    <tr>
+                        <td align="center" style="padding-bottom: 24px;">
+                            <p style="margin: 0; font-size: 13px; color: #9CA3AF;">
+                                This verification code will expire in <strong style="color: #F3F4F6;">15 minutes</strong>.
+                            </p>
+                        </td>
+                    </tr>
+
                     <!-- Security Notice -->
                     <tr>
                         <td style="border-top: 1px solid #1F2937; padding-top: 20px;">
-                            <p style="margin: 0 0 12px; font-size: 12px; line-height: 1.5; color: #6B7280;">
-                                If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.
-                            </p>
-                            <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #4B5563; word-break: break-all;">
-                                Having trouble with the button? Copy and paste this URL into your browser:<br>
-                                <a href="{$safeUrl}" style="color: #F59E0B; text-decoration: underline;">{$safeUrl}</a>
+                            <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #6B7280;">
+                                If you did not create an account on {$appName}, please ignore this email. No account will be activated without this verification code.
                             </p>
                         </td>
                     </tr>

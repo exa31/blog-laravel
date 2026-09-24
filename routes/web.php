@@ -22,6 +22,9 @@ Route::get('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/login', [AuthController::class, 'loginPost'])->name('login.post');
 Route::get('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/register', [AuthController::class, 'registerPost'])->name('register.post');
+Route::get('/verify-email', [AuthController::class, 'verifyEmailPage'])->name('verification.notice');
+Route::post('/verify-email', [AuthController::class, 'verifyEmailCode'])->name('verification.verify');
+Route::post('/verify-email/resend', [AuthController::class, 'resendVerificationCode'])->name('verification.resend');
 Route::post('/refresh', [AuthController::class, 'refreshToken'])->name('auth.refresh');
 
 // Google OAuth

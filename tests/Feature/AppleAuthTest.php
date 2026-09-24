@@ -167,18 +167,22 @@ class AppleAuthTest extends TestCase
         ]);
     }
 
-    public function test_cannot_unbind_apple_id_without_google_account(): void
+    public function test_cannot_unbind_apple_id_without_alternative_verified_account(): void
     {
         $user = User::factory()->create([
             'apple_id' => 'only_apple_user_id',
+            'email' => 'user@privaterelay.appleid.com',
+            'auth_provider' => 'apple',
             'google_id' => null, // No google linked
+            'email_verified_at' => null,
+            'password' => Hash::make('secret123'),
         ]);
 
         $this->actingAs($user);
 
         $response = $this->postJson(route('auth.apple.unbind'));
         $response->assertStatus(403);
-        $this->assertStringContainsString('Google', $response->json('message'));
+        $this->assertStringContainsString('verified email', $response->json('message'));
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
@@ -203,6 +207,30 @@ class AppleAuthTest extends TestCase
             'id' => $user->id,
             'apple_id' => null,
             'google_id' => 'google_user_id_456',
+        ]);
+    }
+
+    public function test_can_unbind_apple_id_when_registered_via_email_password(): void
+    {
+        $user = User::factory()->create([
+            'apple_id' => 'apple_user_id_789',
+            'google_id' => null,
+            'auth_provider' => 'email',
+            'email' => 'author@example.com',
+            'email_verified_at' => now(),
+            'password' => Hash::make('password123'),
+        ]);
+
+        $this->actingAs($user);
+
+        $response = $this->postJson(route('auth.apple.unbind'));
+        $response->assertStatus(200);
+        $this->assertStringContainsString('disconnected successfully', $response->json('message'));
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'apple_id' => null,
+            'email' => 'author@example.com',
         ]);
     }
 

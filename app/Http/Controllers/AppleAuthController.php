@@ -219,9 +219,9 @@ class AppleAuthController extends Controller
             return redirect()->back()->withErrors(['error' => 'No Apple ID linked to this account.']);
         }
 
-        // Enforcement: Cannot unbind Apple ID unless Google account is linked!
-        if (empty($user->google_id)) {
-            $msg = 'Cannot disconnect Apple ID. You must sign in with Google first to verify and update your primary email before unbinding Apple.';
+        // Enforcement: Cannot unbind Apple ID unless user has an alternative verified identity
+        if (! $user->can_unbind_apple) {
+            $msg = 'Cannot disconnect Apple ID. Your account does not have an alternative verified email or connected Google account. Please link Google or verify your primary email first.';
             if ($request->wantsJson()) {
                 return response()->json(['message' => $msg], 403);
             }

@@ -237,7 +237,7 @@ const unbindApple = async () => {
     if (isUnbindingApple.value) return;
 
     if (!currentUser.value?.can_unbind_apple) {
-        showToast('Cannot disconnect Apple ID. Please connect your Google account first.', 'error');
+        showToast('Cannot disconnect Apple ID. Your account must have a verified primary email or Google account connected.', 'error');
         return;
     }
 
@@ -536,7 +536,7 @@ const unbindApple = async () => {
                                     </span>
                                 </div>
                                 <p class="text-xs text-slate-400 mt-0.5">
-                                    {{ currentUser?.has_apple_auth ? (currentUser?.can_unbind_apple ? 'Connected. You can disconnect since Google is linked.' : 'Connected. Cannot unbind until Google account is linked.') : 'Link your Apple ID for fast single sign-on.' }}
+                                    {{ currentUser?.has_apple_auth ? (currentUser?.can_unbind_apple ? 'Connected. You can disconnect your Apple ID anytime.' : 'Connected. Cannot disconnect until a verified primary email or Google account is linked.') : 'Link your Apple ID for fast single sign-on.' }}
                                 </p>
                             </div>
                         </div>
@@ -563,7 +563,7 @@ const unbindApple = async () => {
                                     v-else
                                     type="button"
                                     disabled
-                                    title="Connect Google first before disconnecting Apple ID"
+                                    title="Verify a primary email or connect Google first before disconnecting Apple ID"
                                     class="px-3.5 py-1.5 text-xs font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-xl cursor-not-allowed opacity-60"
                                 >
                                     Locked
