@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/exa31/blog-laravel/compare/v1.4.0...v1.5.0) (2026-09-24)
+
+
+### Features
+
+* **auth:** add email OTP verification flow and flexible apple unbind rules ([378e7c8](https://github.com/exa31/blog-laravel/commit/378e7c80db28add33052d50b2dc4dab29283ee73))
+
 # [1.4.0](https://github.com/exa31/blog-laravel/compare/v1.3.0...v1.4.0) (2026-09-24)
 
 
