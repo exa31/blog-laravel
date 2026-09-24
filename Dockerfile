@@ -1,60 +1,63 @@
 # =============================
-# Tahap 1: Build frontend
+# Stage 1: Build Frontend Assets
 # =============================
-FROM node:20 AS frontend
-
+FROM node:20-alpine AS frontend
 WORKDIR /app
-
-# ⬇️ Tambahkan dua file ini biar Tailwind bisa di-build
 COPY package*.json vite.config.js postcss.config.js tailwind.config.js ./
 COPY resources ./resources
-
-
-RUN npm install && npm run build
+RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+RUN npm run build
 
 # =============================
-# Tahap 2: Laravel + FrankenPHP
+# Stage 2: Vendor Dependencies
 # =============================
-FROM dunglas/frankenphp
+FROM composer:2 AS composer-builder
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install \
+    --no-dev \
+    --no-interaction \
+    --prefer-dist \
+    --optimize-autoloader \
+    --no-scripts \
+    --ignore-platform-reqs
 
-# Install dependencies dan PHP extensions
-RUN apt-get update && apt-get install -y \
-    build-essential unzip git curl vim \
-    libpng-dev libjpeg62-turbo-dev libfreetype6-dev libzip-dev \
-    libicu-dev libonig-dev libpq-dev locales \
-    jpegoptim optipng pngquant gifsicle \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install \
-        pdo_mysql pdo_pgsql mbstring bcmath exif pcntl gd intl zip \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+# =============================
+# Stage 3: Production Runtime
+# =============================
+FROM dunglas/frankenphp:php8.4-alpine
+
+# Install only required PHP extensions via built-in helper (strips compilation headers automatically)
+RUN install-php-extensions \
+    pdo_pgsql \
+    pdo_mysql \
+    gd \
+    intl \
+    zip \
+    bcmath \
+    exif \
+    pcntl \
+    opcache
+
+# Use official production PHP configuration
+RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 WORKDIR /app
 
-# Copy Laravel backend tanpa folder yang nggak perlu
+# Copy application source code
 COPY . .
 
-# ⚠️ Hapus folder `public/build` default sebelum replace dari frontend
-RUN rm -rf public/build
-
-# ✅ Copy hasil Vite build dari tahap frontend
+# Copy production vendor from composer-builder and compiled assets from frontend
+COPY --from=composer-builder /app/vendor ./vendor
 COPY --from=frontend /app/public/build ./public/build
 
-# ❗ resources tidak perlu di-copy ulang (sudah ada di Laravel), kecuali kamu build-only dari sana
+# Setup storage and cache permissions
+RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache && \
+    chmod -R 775 /app/storage /app/bootstrap/cache
 
-# ✅ Install Composer
-RUN curl -sS https://getcomposer.org/installer | php && \
-    mv composer.phar /usr/local/bin/composer && \
-    composer install --no-dev --optimize-autoloader
-
-# ✅ Set permission Laravel
-RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
-
-# ✅ Copy konfigurasi Caddy untuk FrankenPHP
+# Copy FrankenPHP Caddyfile & Startup Script
 COPY frankenphp.conf /app/Caddyfile
-
-# ✅ Start script (harus berisi perintah `php artisan migrate`, dll kalau perlu)
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
-# ✅ Jalankan Laravel via start.sh
 ENTRYPOINT ["/start.sh"]
