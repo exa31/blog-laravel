@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/exa31/blog-laravel/compare/v1.3.0...v1.4.0) (2026-09-24)
+
+
+### Features
+
+* **auth:** make apple p8 private key optional with public key jwks validation ([bb9fcd6](https://github.com/exa31/blog-laravel/commit/bb9fcd6b42194312258af7e1f51cb9345a9b1bca))
+
 # [1.3.0](https://github.com/exa31/blog-laravel/compare/v1.2.0...v1.3.0) (2026-09-24)
 
 
