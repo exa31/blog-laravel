@@ -1,8 +1,12 @@
-name: Build & Deploy Laravel to VPS via GHCR
+name: Build & Deploy Laravel to Kubernetes via GHCR
 
 on:
   push:
     branches: [ main ]
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
 
 jobs:
   build-and-deploy:
@@ -10,19 +14,38 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Log in to GHCR
-        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
-        run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/e-blog:latest .
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
-      - name: Push Docker image to GHCR
-        run: docker push ghcr.io/${{ github.repository_owner }}/e-blog:latest
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/e-blog
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
 
-      - name: Deploy to VPS
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to Kubernetes on VPS
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
@@ -30,9 +53,14 @@ jobs:
           ssh-keyscan -p 31086 -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
           ssh -p 31086 -i ~/.ssh/id_ed25519 deploy@${{ secrets.VPS_HOST }} << 'EOF'
-            docker login ghcr.io -u ${{ github.repository_owner }} -p '${{ secrets.GHCR_TOKEN }}'
-            docker pull ghcr.io/${{ github.repository_owner }}/e-blog:latest
-            docker stop e-blog || true && docker rm e-blog || true
-            docker run -d --name e-blog -p 3002:8000 \
-            ghcr.io/${{ github.repository_owner }}/e-blog:latest
+            set -e
+            echo "🚀 Deploying to Kubernetes cluster..."
+            
+            # Restart deployment to pull the latest image and load secrets
+            kubectl rollout restart deployment/e-blog
+            
+            # Wait for successful rollout
+            kubectl rollout status deployment/e-blog --timeout=120s
+            
+            echo "✅ Deployment completed successfully!"
           EOF
