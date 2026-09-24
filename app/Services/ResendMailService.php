@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Resend;
 
 class ResendMailService
 {
@@ -15,36 +15,48 @@ class ResendMailService
     public function sendVerificationCodeEmail(User $user, string $code): bool
     {
         $appName = config('app.name', 'E-Blog');
-        $fromAddress = config('mail.from.address', 'no-reply@eka-dev.cloud');
-        $fromName = config('mail.from.name', $appName);
+        $fromAddress = config('mail.from.address') ?: env('MAIL_FROM_ADDRESS', 'no-reply@eka-dev.cloud');
+        $fromName = config('mail.from.name') ?: env('MAIL_FROM_NAME', $appName);
         $resendApiKey = config('services.resend.key') ?: env('RESEND_KEY') ?: env('RESEND_API_KEY');
 
         Log::info("📧 [Email Verification OTP] Target: {$user->email} | User: {$user->name} | Code: [ {$code} ] (Expires in 15 mins)");
 
         $htmlContent = $this->buildVerificationCodeHtml($user->name, $code, $appName);
 
-        // Tier 1: Send directly via Resend SDK if API key is provided
+        // Tier 1: Send directly via Resend REST API if API key is provided
         if (! empty($resendApiKey)) {
             try {
-                $resend = Resend::client($resendApiKey);
-                $response = $resend->emails->send([
-                    'from' => "{$fromName} <{$fromAddress}>",
-                    'to' => [$user->email],
-                    'subject' => "{$code} is your {$appName} verification code",
-                    'html' => $htmlContent,
-                ]);
+                $response = Http::withToken($resendApiKey)
+                    ->withHeaders(['Content-Type' => 'application/json'])
+                    ->timeout(10)
+                    ->post('https://api.resend.com/emails', [
+                        'from' => "{$fromName} <{$fromAddress}>",
+                        'to' => [$user->email],
+                        'subject' => "{$code} is your {$appName} verification code",
+                        'html' => $htmlContent,
+                    ]);
 
-                Log::info("✅ [Resend API Success] Verification code email dispatched to {$user->email}. Resend ID: " . ($response->id ?? 'unknown'));
-                return true;
+                if ($response->successful()) {
+                    $resendId = $response->json('id') ?? 'unknown';
+                    Log::info("✅ [Resend API Success] Verification code email dispatched to {$user->email}. Resend ID: {$resendId}");
+                    return true;
+                }
+
+                Log::error("❌ [Resend API Error {$response->status()}] Failed to send verification email to {$user->email}: " . $response->body(), [
+                    'from' => "{$fromName} <{$fromAddress}>",
+                    'to' => $user->email,
+                    'status' => $response->status(),
+                    'response' => $response->json() ?? $response->body(),
+                ]);
             } catch (\Throwable $e) {
-                Log::error("❌ [Resend API Error] Failed to send verification email to {$user->email}: " . $e->getMessage() . ". Falling back to default mailer.", [
+                Log::error("❌ [Resend Request Exception] Exception while connecting to Resend for {$user->email}: " . $e->getMessage(), [
                     'from' => "{$fromName} <{$fromAddress}>",
                     'to' => $user->email,
                     'error' => $e->getMessage(),
                 ]);
             }
         } else {
-            Log::warning("⚠️ [Resend Config] No RESEND_KEY found in configuration. Trying fallback mailer.");
+            Log::warning("⚠️ [Resend Config] No RESEND_KEY found in configuration or .env. Please configure RESEND_KEY=re_... in .env.");
         }
 
         // Tier 2: Fallback to Laravel Mail
@@ -72,36 +84,48 @@ class ResendMailService
     {
         $resetUrl = url("/reset-password/{$token}?email=".urlencode($user->email));
         $appName = config('app.name', 'E-Blog');
-        $fromAddress = config('mail.from.address', 'no-reply@eka-dev.cloud');
-        $fromName = config('mail.from.name', $appName);
+        $fromAddress = config('mail.from.address') ?: env('MAIL_FROM_ADDRESS', 'no-reply@eka-dev.cloud');
+        $fromName = config('mail.from.name') ?: env('MAIL_FROM_NAME', $appName);
         $resendApiKey = config('services.resend.key') ?: env('RESEND_KEY') ?: env('RESEND_API_KEY');
 
         Log::info("📧 [Password Reset Link] Target: {$user->email} | Link: {$resetUrl}");
 
         $htmlContent = $this->buildPasswordResetHtml($user->name, $resetUrl, $appName);
 
-        // Tier 1: Send directly via Resend SDK if API key is provided
+        // Tier 1: Send directly via Resend REST API if API key is provided
         if (! empty($resendApiKey)) {
             try {
-                $resend = Resend::client($resendApiKey);
-                $response = $resend->emails->send([
-                    'from' => "{$fromName} <{$fromAddress}>",
-                    'to' => [$user->email],
-                    'subject' => "Reset Your {$appName} Password",
-                    'html' => $htmlContent,
-                ]);
+                $response = Http::withToken($resendApiKey)
+                    ->withHeaders(['Content-Type' => 'application/json'])
+                    ->timeout(10)
+                    ->post('https://api.resend.com/emails', [
+                        'from' => "{$fromName} <{$fromAddress}>",
+                        'to' => [$user->email],
+                        'subject' => "Reset Your {$appName} Password",
+                        'html' => $htmlContent,
+                    ]);
 
-                Log::info("✅ [Resend API Success] Password reset email dispatched to {$user->email}. Resend ID: " . ($response->id ?? 'unknown'));
-                return true;
+                if ($response->successful()) {
+                    $resendId = $response->json('id') ?? 'unknown';
+                    Log::info("✅ [Resend API Success] Password reset email dispatched to {$user->email}. Resend ID: {$resendId}");
+                    return true;
+                }
+
+                Log::error("❌ [Resend API Error {$response->status()}] Failed to send reset email to {$user->email}: " . $response->body(), [
+                    'from' => "{$fromName} <{$fromAddress}>",
+                    'to' => $user->email,
+                    'status' => $response->status(),
+                    'response' => $response->json() ?? $response->body(),
+                ]);
             } catch (\Throwable $e) {
-                Log::error("❌ [Resend API Error] Failed to send reset email to {$user->email}: " . $e->getMessage() . ". Falling back to default mailer.", [
+                Log::error("❌ [Resend Request Exception] Exception while connecting to Resend for {$user->email}: " . $e->getMessage(), [
                     'from' => "{$fromName} <{$fromAddress}>",
                     'to' => $user->email,
                     'error' => $e->getMessage(),
                 ]);
             }
         } else {
-            Log::warning("⚠️ [Resend Config] No RESEND_KEY found in configuration. Trying fallback mailer.");
+            Log::warning("⚠️ [Resend Config] No RESEND_KEY found in configuration or .env. Please configure RESEND_KEY=re_... in .env.");
         }
 
         // Tier 2: Fallback to Laravel Mail (e.g. smtp, log, array during testing)
