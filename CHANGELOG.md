@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/exa31/blog-laravel/compare/v1.6.0...v1.7.0) (2026-09-24)
+
+
+### Features
+
+* **profile:** add display name update feature in account settings modal ([f28732a](https://github.com/exa31/blog-laravel/commit/f28732a9f802ca6daeaa6be6aff4369465f5f57b))
+
 # [1.6.0](https://github.com/exa31/blog-laravel/compare/v1.5.0...v1.6.0) (2026-09-24)
 
 
