@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/exa31/blog-laravel/compare/v1.8.0...v1.8.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **logging:** enable stdout stream and caddy access logging in frankenphp ([61ed8bb](https://github.com/exa31/blog-laravel/commit/61ed8bbf26109ef3289cc64f03442e7690ce2fc3))
+
 # [1.8.0](https://github.com/exa31/blog-laravel/compare/v1.7.0...v1.8.0) (2026-09-24)
 
 
