@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/exa31/blog-laravel/compare/v1.5.0...v1.6.0) (2026-09-24)
+
+
+### Features
+
+* **logging:** implement clean structured full JSON logging for requests and application ([5fb2285](https://github.com/exa31/blog-laravel/commit/5fb2285a2a6aa1e3843bdb922ba2c1015bb43c5b))
+
 # [1.5.0](https://github.com/exa31/blog-laravel/compare/v1.4.0...v1.5.0) (2026-09-24)
 
 
