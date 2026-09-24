@@ -15,7 +15,7 @@ class ResendMailService
     public function sendVerificationCodeEmail(User $user, string $code): bool
     {
         $appName = config('app.name', 'E-Blog');
-        $fromAddress = config('mail.from.address') ?: env('MAIL_FROM_ADDRESS', 'no-reply@eka-dev.cloud');
+        $fromAddress = config('mail.from.address') ?: env('MAIL_FROM_ADDRESS') ?: env('MAIN_FROM_ADDRESS') ?: 'no-reply@eka-dev.cloud';
         $fromName = config('mail.from.name') ?: env('MAIL_FROM_NAME', $appName);
         $resendApiKey = config('services.resend.key') ?: env('RESEND_KEY') ?: env('RESEND_API_KEY');
 
@@ -84,7 +84,7 @@ class ResendMailService
     {
         $resetUrl = url("/reset-password/{$token}?email=".urlencode($user->email));
         $appName = config('app.name', 'E-Blog');
-        $fromAddress = config('mail.from.address') ?: env('MAIL_FROM_ADDRESS', 'no-reply@eka-dev.cloud');
+        $fromAddress = config('mail.from.address') ?: env('MAIL_FROM_ADDRESS') ?: env('MAIN_FROM_ADDRESS') ?: 'no-reply@eka-dev.cloud';
         $fromName = config('mail.from.name') ?: env('MAIL_FROM_NAME', $appName);
         $resendApiKey = config('services.resend.key') ?: env('RESEND_KEY') ?: env('RESEND_API_KEY');
 
