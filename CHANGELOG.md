@@ -1,3 +1,10 @@
+## [1.9.2](https://github.com/exa31/blog-laravel/compare/v1.9.1...v1.9.2) (2026-09-24)
+
+
+### Bug Fixes
+
+* **mail:** add sender env fallback and enforce stdout channel in stack logger ([0c768f6](https://github.com/exa31/blog-laravel/commit/0c768f6958fd3220c8b9f06ad502f198bbb8f9e9))
+
 ## [1.9.1](https://github.com/exa31/blog-laravel/compare/v1.9.0...v1.9.1) (2026-09-24)
 
 
