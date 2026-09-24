@@ -19,12 +19,12 @@ Route::get('/comments/{id}/on-scroll', [CommentController::class, 'addOnScroll']
 
 // Guest & Auth routes
 Route::get('/login', [AuthController::class, 'login'])->name('login');
-Route::post('/login', [AuthController::class, 'loginPost'])->name('login.post');
+Route::post('/login', [AuthController::class, 'loginPost'])->middleware('throttle:10,1')->name('login.post');
 Route::get('/register', [AuthController::class, 'register'])->name('register');
-Route::post('/register', [AuthController::class, 'registerPost'])->name('register.post');
+Route::post('/register', [AuthController::class, 'registerPost'])->middleware('throttle:5,1')->name('register.post');
 Route::get('/verify-email', [AuthController::class, 'verifyEmailPage'])->name('verification.notice');
-Route::post('/verify-email', [AuthController::class, 'verifyEmailCode'])->name('verification.verify');
-Route::post('/verify-email/resend', [AuthController::class, 'resendVerificationCode'])->name('verification.resend');
+Route::post('/verify-email', [AuthController::class, 'verifyEmailCode'])->middleware('throttle:10,1')->name('verification.verify');
+Route::post('/verify-email/resend', [AuthController::class, 'resendVerificationCode'])->middleware('throttle:5,1')->name('verification.resend');
 Route::post('/refresh', [AuthController::class, 'refreshToken'])->name('auth.refresh');
 
 // Google OAuth
@@ -38,9 +38,9 @@ Route::post('/auth/apple/webhook', [AppleAuthController::class, 'webhook'])->nam
 
 // Forgot & Reset Password routes (Resend Email)
 Route::get('/forgot-password', [AuthController::class, 'forgotPassword'])->name('password.request');
-Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->name('password.email');
+Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->middleware('throttle:5,1')->name('password.email');
 Route::get('/reset-password/{token}', [AuthController::class, 'resetPasswordPage'])->name('password.reset');
-Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1')->name('password.update');
 
 // OAuth Set Password Flow
 Route::get('/auth/set-password', [AuthController::class, 'showSetPassword'])->name('auth.set-password');

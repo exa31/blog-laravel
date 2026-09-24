@@ -16,12 +16,6 @@ class PasswordResetTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
-
     public function test_forgot_password_page_renders(): void
     {
         $response = $this->get(route('password.request'));
@@ -112,5 +106,28 @@ class PasswordResetTest extends TestCase
         $response->assertSessionHasErrors(['invalid']);
         $user->refresh();
         $this->assertTrue(Hash::check('original_pass_123', $user->password));
+    }
+
+    public function test_requesting_password_reset_enforces_cooldown(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'cooldown@example.com',
+        ]);
+
+        DB::table('password_reset_tokens')->insert([
+            'email' => 'cooldown@example.com',
+            'token' => Hash::make('recent-token'),
+            'created_at' => Carbon::now()->subSeconds(20), // 20 seconds ago (< 60s)
+        ]);
+
+        $mockMailService = Mockery::mock(ResendMailService::class);
+        $mockMailService->shouldNotReceive('sendPasswordResetEmail');
+        $this->app->instance(ResendMailService::class, $mockMailService);
+
+        $response = $this->post(route('password.email'), [
+            'email' => 'cooldown@example.com',
+        ]);
+
+        $response->assertSessionHasErrors(['invalid']);
     }
 }

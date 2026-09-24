@@ -428,6 +428,20 @@ class AuthController extends Controller
         $user = User::where('email', $validated['email'])->first();
 
         if ($user) {
+            $lastRecord = DB::table('password_reset_tokens')->where('email', $user->email)->first();
+
+            // Rate limit cooldown: 60 seconds between reset link requests
+            if ($lastRecord && Carbon::parse($lastRecord->created_at)->addSeconds(60)->isFuture()) {
+                $secondsLeft = 60 - Carbon::parse($lastRecord->created_at)->diffInSeconds(now());
+                $cooldownMsg = "Please wait {$secondsLeft} seconds before requesting another reset link.";
+
+                if ($request->wantsJson()) {
+                    return response()->json(['message' => $cooldownMsg], 429);
+                }
+
+                return redirect()->back()->withErrors(['invalid' => $cooldownMsg]);
+            }
+
             $plainToken = Str::random(64);
 
             DB::table('password_reset_tokens')->updateOrInsert(
