@@ -21,7 +21,7 @@ jobs:
       image_name: ghcr.io/exa31/e-blog
       docker_context: .
       dockerfile: Dockerfile
-      ssh_port: 31086
+      ssh_port: 31080
       kubeconfig: /home/deploy/.kube/config
       rollout_timeout: 300s
       push_latest: true
