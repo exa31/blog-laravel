@@ -3,6 +3,7 @@ import { ref, reactive, watch, nextTick, computed } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { showToast } from '../helper/toast';
+import { showConfirm } from '../helper/confirm';
 import UserAvatar from './UserAvatar.vue';
 
 const props = defineProps({
@@ -281,6 +282,17 @@ const saveAvatar = async () => {
 
 const removeAvatar = async () => {
     if (isUploading.value) return;
+
+    const confirmed = await showConfirm({
+        title: 'Remove Profile Photo?',
+        message: 'Are you sure you want to remove your custom profile picture? Your profile will display your default name initials.',
+        confirmText: 'Remove Photo',
+        cancelText: 'Keep Photo',
+        type: 'warning',
+    });
+
+    if (!confirmed) return;
+
     isUploading.value = true;
 
     try {
@@ -314,9 +326,15 @@ const unbindApple = async () => {
         return;
     }
 
-    if (!confirm('Are you sure you want to disconnect your Apple ID from this account?')) {
-        return;
-    }
+    const confirmed = await showConfirm({
+        title: 'Disconnect Apple ID?',
+        message: 'Are you sure you want to disconnect your Apple ID from this account? You can link it back at any time.',
+        confirmText: 'Disconnect',
+        cancelText: 'Cancel',
+        type: 'danger',
+    });
+
+    if (!confirmed) return;
 
     isUnbindingApple.value = true;
     try {

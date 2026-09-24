@@ -5,6 +5,7 @@ import BrandLogo from '../Components/BrandLogo.vue';
 import Footer from '../Components/Footer.vue';
 import ModalProfileAvatar from '../Components/ModalProfileAvatar.vue';
 import ModalSearch from '../Components/ModalSearch.vue';
+import ModalConfirm from '../Components/ModalConfirm.vue';
 import ToastNotification from '../Components/ToastNotification.vue';
 import UserAvatar from '../Components/UserAvatar.vue';
 import { showToast } from '../helper/toast';
@@ -101,6 +102,7 @@ const logout = () => {
     <div class="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 transition-colors duration-200">
         <ModalSearch v-model:openSearch="openSearch" @submitSearch="handleSearchSubmit" />
         <ModalProfileAvatar v-model="showAvatarModal" @avatarUpdated="handleAvatarUpdated" @userUpdated="handleUserUpdated" />
+        <ModalConfirm />
         <ToastNotification />
 
         <!-- Sticky Glassmorphic Navbar -->
