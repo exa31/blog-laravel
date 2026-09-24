@@ -54,8 +54,30 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', env('LOG_STACK', 'single')),
+            'channels' => explode(',', env('LOG_STACK', 'stdout,single')),
             'ignore_exceptions' => false,
+        ],
+
+        'json' => [
+            'driver' => 'monolog',
+            'level' => env('LOG_LEVEL', 'info'),
+            'handler' => StreamHandler::class,
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'with' => [
+                'stream' => 'php://stdout',
+            ],
+            'processors' => [PsrLogMessageProcessor::class],
+        ],
+
+        'stdout' => [
+            'driver' => 'monolog',
+            'level' => env('LOG_LEVEL', 'info'),
+            'handler' => StreamHandler::class,
+            'formatter' => env('LOG_STDOUT_FORMATTER', Monolog\Formatter\JsonFormatter::class),
+            'with' => [
+                'stream' => 'php://stdout',
+            ],
+            'processors' => [PsrLogMessageProcessor::class],
         ],
 
         'single' => [
@@ -98,7 +120,7 @@ return [
             'driver' => 'monolog',
             'level' => env('LOG_LEVEL', 'debug'),
             'handler' => StreamHandler::class,
-            'formatter' => env('LOG_STDERR_FORMATTER'),
+            'formatter' => env('LOG_STDERR_FORMATTER', Monolog\Formatter\JsonFormatter::class),
             'with' => [
                 'stream' => 'php://stderr',
             ],

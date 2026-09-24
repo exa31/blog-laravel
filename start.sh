@@ -18,7 +18,6 @@ echo "Menjalankan database migration di background..."
 
 # Jalankan Laravel Octane dengan FrankenPHP
 echo "Menjalankan Laravel dengan octane FrankenPHP..."
-#php artisan octane:frankenphp
-php artisan octane:start --server=frankenphp --log-level=debug
+php artisan octane:start --server=frankenphp --host=0.0.0.0 --port=8000
 
 

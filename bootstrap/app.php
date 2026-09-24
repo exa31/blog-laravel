@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\JwtAuthMiddleware;
+use App\Http\Middleware\StructuredHttpLoggingMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->web(append: [
+            StructuredHttpLoggingMiddleware::class,
             JwtAuthMiddleware::class,
             HandleInertiaRequests::class,
         ]);
