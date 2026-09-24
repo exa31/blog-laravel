@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/exa31/blog-laravel/compare/v1.9.4...v1.10.0) (2026-09-24)
+
+
+### Features
+
+* **auth:** enforce maximum 3 daily requests for password reset and email verification otp ([f4dc47c](https://github.com/exa31/blog-laravel/commit/f4dc47c571e9fa61788ff7a3a689e1e03621523c))
+
 ## [1.9.4](https://github.com/exa31/blog-laravel/compare/v1.9.3...v1.9.4) (2026-09-24)
 
 
