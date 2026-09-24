@@ -1,3 +1,10 @@
+## [1.9.4](https://github.com/exa31/blog-laravel/compare/v1.9.3...v1.9.4) (2026-09-24)
+
+
+### Bug Fixes
+
+* **auth:** lock email field in reset password page and enforce route rate limiting cooldowns ([9da5c5c](https://github.com/exa31/blog-laravel/commit/9da5c5c44a3c9de809661c80aca986febfc1193a))
+
 ## [1.9.3](https://github.com/exa31/blog-laravel/compare/v1.9.2...v1.9.3) (2026-09-24)
 
 
