@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/exa31/blog-laravel/compare/v1.11.0...v1.11.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* **mail:** set sender name to app name and fallback properly instead of Example ([b675107](https://github.com/exa31/blog-laravel/commit/b675107ec8eac867c9d1f927bd9fb5d128276208))
+
 # [1.11.0](https://github.com/exa31/blog-laravel/compare/v1.10.0...v1.11.0) (2026-09-25)
 
 
