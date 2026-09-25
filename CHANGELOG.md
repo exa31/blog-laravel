@@ -1,3 +1,10 @@
+## [1.11.3](https://github.com/exa31/blog-laravel/compare/v1.11.2...v1.11.3) (2026-09-25)
+
+
+### Bug Fixes
+
+* **auth:** secure cross-site OAuth account linking with cached state binding ([dfe89f8](https://github.com/exa31/blog-laravel/commit/dfe89f8295e1cf4b1c6ab953fa017dbbdb33ed9a))
+
 ## [1.11.2](https://github.com/exa31/blog-laravel/compare/v1.11.1...v1.11.2) (2026-09-25)
 
 
