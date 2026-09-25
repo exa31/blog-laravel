@@ -50,15 +50,25 @@ class AuthController extends Controller
 
         // If user registered with email and has not verified email yet, prompt verification
         if ($user->auth_provider === 'email' && empty($user->email_verified_at)) {
-            $code = sprintf('%06d', random_int(100000, 999999));
-            DB::table('email_verification_codes')->updateOrInsert(
-                ['email' => $user->email],
-                [
-                    'code' => Hash::make($code),
-                    'created_at' => now(),
-                ]
-            );
-            $this->resendMailService->sendVerificationCodeEmail($user, $code);
+            $lastRecord = DB::table('email_verification_codes')->where('email', $user->email)->first();
+            $dailyKey = 'verify-resend-daily:'.strtolower($user->email);
+
+            $isCooldown = $lastRecord && Carbon::parse($lastRecord->created_at)->addSeconds(60)->isFuture();
+            $isOverDailyLimit = RateLimiter::tooManyAttempts($dailyKey, 3);
+
+            if (! $isCooldown && ! $isOverDailyLimit) {
+                $code = sprintf('%06d', random_int(100000, 999999));
+                DB::table('email_verification_codes')->updateOrInsert(
+                    ['email' => $user->email],
+                    [
+                        'code' => Hash::make($code),
+                        'created_at' => now(),
+                    ]
+                );
+                RateLimiter::hit($dailyKey, 86400);
+                $this->resendMailService->sendVerificationCodeEmail($user, $code);
+            }
+
             session(['verify_email_address' => $user->email]);
 
             if ($request->wantsJson()) {
@@ -144,6 +154,7 @@ class AuthController extends Controller
             );
 
             $this->resendMailService->sendVerificationCodeEmail($user, $code);
+            RateLimiter::hit('verify-resend-daily:'.strtolower($user->email), 86400);
             session(['verify_email_address' => $user->email]);
 
             if ($request->wantsJson()) {
