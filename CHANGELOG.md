@@ -1,3 +1,10 @@
+## [1.11.2](https://github.com/exa31/blog-laravel/compare/v1.11.1...v1.11.2) (2026-09-25)
+
+
+### Bug Fixes
+
+* **auth:** surface OAuth errors, cancel notifications, and duplicate account warnings properly in UI ([fae254f](https://github.com/exa31/blog-laravel/commit/fae254f6d6ca895e3f8a18bfcbb3085ae9dd60b3))
+
 ## [1.11.1](https://github.com/exa31/blog-laravel/compare/v1.11.0...v1.11.1) (2026-09-25)
 
 
