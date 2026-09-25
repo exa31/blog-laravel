@@ -44,6 +44,27 @@ class AppleAuthController extends Controller
      */
     public function appleRedirect(Request $request): RedirectResponse
     {
+        // Check if Apple returned an error callback (e.g. user cancelled authorization)
+        if ($request->has('error')) {
+            $error = $request->input('error');
+            $errorDesc = $request->input('error_description');
+            $msg = ($error === 'user_cancelled_authorize')
+                ? 'Apple Sign-In was cancelled.'
+                : 'Apple authentication failed: ' . ($errorDesc ?: $error);
+
+            Log::warning('Apple OAuth callback error: ' . $msg, $request->all());
+
+            if (Auth::check()) {
+                return redirect()->route('home')
+                    ->with('error', $msg)
+                    ->withErrors(['error' => $msg]);
+            }
+
+            return redirect()->route('login')
+                ->with('error', $msg)
+                ->withErrors(['invalid' => $msg]);
+        }
+
         $idToken = $request->input('id_token');
         $code = $request->input('code');
         $userJson = $request->input('user');
@@ -95,9 +116,16 @@ class AppleAuthController extends Controller
         }
 
         if (empty($appleId)) {
-            return redirect()->route('login')->withErrors([
-                'invalid' => 'Apple authentication failed. No valid Apple credentials received.',
-            ]);
+            $failMsg = 'Apple authentication failed. No valid Apple credentials received.';
+            if (Auth::check()) {
+                return redirect()->route('home')
+                    ->with('error', $failMsg)
+                    ->withErrors(['error' => $failMsg]);
+            }
+
+            return redirect()->route('login')
+                ->with('error', $failMsg)
+                ->withErrors(['invalid' => $failMsg]);
         }
 
         // Case 1: User is already logged in (Linking flow)
@@ -108,9 +136,21 @@ class AppleAuthController extends Controller
             // Check if this Apple ID is already linked to a different account
             $existing = User::where('apple_id', $appleId)->where('id', '!=', $currentUser->id)->first();
             if ($existing) {
-                return redirect()->route('home')->withErrors([
-                    'error' => 'This Apple ID is already linked to another account.',
-                ]);
+                $errMsg = 'This Apple ID is already linked to another account.';
+                return redirect()->route('home')
+                    ->with('error', $errMsg)
+                    ->withErrors(['error' => $errMsg]);
+            }
+
+            // Check if email from Apple is already registered to a different user
+            if (! empty($email)) {
+                $existingEmail = User::where('email', $email)->where('id', '!=', $currentUser->id)->first();
+                if ($existingEmail) {
+                    $errMsg = "The email ({$email}) associated with this Apple ID is already registered to another account.";
+                    return redirect()->route('home')
+                        ->with('error', $errMsg)
+                        ->withErrors(['error' => $errMsg]);
+                }
             }
 
             $currentUser->update([

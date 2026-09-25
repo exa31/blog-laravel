@@ -16,6 +16,18 @@ class EmailVerificationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        \Illuminate\Support\Facades\Cache::flush();
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
+    }
+
     public function test_registration_sends_verification_code_and_redirects_to_verify_page(): void
     {
         $mockMailService = Mockery::mock(ResendMailService::class);

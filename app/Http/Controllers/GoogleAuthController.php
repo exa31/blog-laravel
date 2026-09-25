@@ -29,15 +29,41 @@ class GoogleAuthController extends Controller
      * Handle Google OAuth callback.
      * Updates the user's primary email address with their verified Google email address.
      */
-    public function googleRedirect(): RedirectResponse
+    public function googleRedirect(Request $request): RedirectResponse
     {
+        if ($request->has('error')) {
+            $error = $request->input('error');
+            $msg = ($error === 'access_denied')
+                ? 'Google Sign-In was cancelled.'
+                : 'Google authentication failed: '.$error;
+
+            Log::warning('Google OAuth callback error: '.$msg, $request->all());
+
+            if (Auth::check()) {
+                return redirect()->route('home')
+                    ->with('error', $msg)
+                    ->withErrors(['error' => $msg]);
+            }
+
+            return redirect()->route('login')
+                ->with('error', $msg)
+                ->withErrors(['invalid' => $msg]);
+        }
+
         try {
             $googleUser = Socialite::driver('google')->stateless()->user();
         } catch (\Throwable $e) {
             Log::error('Google OAuth callback failed: '.$e->getMessage());
-            return redirect()->route('login')->withErrors([
-                'invalid' => 'Google authentication failed. Please try again.',
-            ]);
+            $failMsg = 'Google authentication failed. Please try again.';
+            if (Auth::check()) {
+                return redirect()->route('home')
+                    ->with('error', $failMsg)
+                    ->withErrors(['error' => $failMsg]);
+            }
+
+            return redirect()->route('login')
+                ->with('error', $failMsg)
+                ->withErrors(['invalid' => $failMsg]);
         }
 
         $googleId = $googleUser->getId();
@@ -45,9 +71,16 @@ class GoogleAuthController extends Controller
         $name = $googleUser->getName() ?? $googleUser->getNickname() ?? 'User';
 
         if (empty($googleEmail)) {
-            return redirect()->route('login')->withErrors([
-                'invalid' => 'Google authentication failed. No verified email returned by Google.',
-            ]);
+            $noEmailMsg = 'Google authentication failed. No verified email returned by Google.';
+            if (Auth::check()) {
+                return redirect()->route('home')
+                    ->with('error', $noEmailMsg)
+                    ->withErrors(['error' => $noEmailMsg]);
+            }
+
+            return redirect()->route('login')
+                ->with('error', $noEmailMsg)
+                ->withErrors(['invalid' => $noEmailMsg]);
         }
 
         // Case 1: User is already logged in (Linking flow)
@@ -57,17 +90,19 @@ class GoogleAuthController extends Controller
 
             $existing = User::where('google_id', $googleId)->where('id', '!=', $currentUser->id)->first();
             if ($existing) {
-                return redirect()->route('home')->withErrors([
-                    'error' => 'This Google account is already linked to another account.',
-                ]);
+                $dupMsg = 'This Google account is already linked to another account.';
+                return redirect()->route('home')
+                    ->with('error', $dupMsg)
+                    ->withErrors(['error' => $dupMsg]);
             }
 
             // Check if email belongs to another user
             $existingEmail = User::where('email', $googleEmail)->where('id', '!=', $currentUser->id)->first();
             if ($existingEmail) {
-                return redirect()->route('home')->withErrors([
-                    'error' => 'The email associated with this Google account is already registered to another user.',
-                ]);
+                $dupEmailMsg = 'The email associated with this Google account is already registered to another user.';
+                return redirect()->route('home')
+                    ->with('error', $dupEmailMsg)
+                    ->withErrors(['error' => $dupEmailMsg]);
             }
 
             // Link Google and update primary email

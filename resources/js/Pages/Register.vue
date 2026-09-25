@@ -52,6 +52,11 @@ const submit = () => {
                 </p>
             </div>
 
+            <!-- Global Error Banner -->
+            <div v-if="$page.props.errors?.invalid || $page.props.errors?.error || form.errors?.invalid || form.errors?.error || $page.props.flash?.error" class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium text-center">
+                {{ $page.props.errors?.invalid || $page.props.errors?.error || form.errors?.invalid || form.errors?.error || $page.props.flash?.error }}
+            </div>
+
             <!-- Form -->
             <form @submit.prevent="submit" class="space-y-4">
                 <div>

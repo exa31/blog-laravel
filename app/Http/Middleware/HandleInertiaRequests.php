@@ -56,8 +56,8 @@ class HandleInertiaRequests extends Middleware
             'isLogin' => Auth::check(),
             'user' => $user,
             'flash' => [
-                'message' => fn () => $request->session()->get('message'),
-                'error' => fn () => $request->session()->get('error'),
+                'message' => fn () => $request->session()->get('message') ?? $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error') ?? ($request->session()->get('errors')?->first()),
             ],
         ]);
     }

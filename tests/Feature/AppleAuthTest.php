@@ -267,4 +267,91 @@ class AppleAuthTest extends TestCase
         $this->assertEquals('apple.user.sub.123', $decoded['sub']);
         $this->assertEquals('test@apple.com', $decoded['email']);
     }
+
+    public function test_apple_callback_error_query_redirects_logged_in_user_with_error_flash(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $response = $this->get(route('auth.apple.callback', [
+            'error' => 'user_cancelled_authorize',
+        ]));
+
+        $response->assertRedirect(route('home'));
+        $response->assertSessionHas('error', 'Apple Sign-In was cancelled.');
+    }
+
+    public function test_apple_callback_error_query_redirects_guest_to_login(): void
+    {
+        $response = $this->get(route('auth.apple.callback', [
+            'error' => 'invalid_request',
+            'error_description' => 'Invalid client id',
+        ]));
+
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHas('error');
+    }
+
+    public function test_apple_callback_linking_fails_when_apple_id_belongs_to_another_account(): void
+    {
+        $existingOtherUser = User::factory()->create([
+            'apple_id' => 'taken_apple_sub_999',
+        ]);
+
+        $currentUser = User::factory()->create([
+            'apple_id' => null,
+        ]);
+        $this->actingAs($currentUser);
+
+        $mockTokenService = Mockery::mock(AppleTokenService::class);
+        $mockTokenService->shouldReceive('getClientSecret')->andReturn(null);
+        $mockTokenService->shouldReceive('verifyIdToken')->andReturn([
+            'sub' => 'taken_apple_sub_999',
+            'email' => 'other@apple.com',
+        ]);
+        $mockTokenService->shouldReceive('decodeToken')->andReturn([
+            'sub' => 'taken_apple_sub_999',
+            'email' => 'other@apple.com',
+        ]);
+        $this->app->instance(AppleTokenService::class, $mockTokenService);
+
+        $response = $this->post(route('auth.apple.callback'), [
+            'id_token' => 'dummy.jwt.token',
+        ]);
+
+        $response->assertRedirect(route('home'));
+        $response->assertSessionHas('error', 'This Apple ID is already linked to another account.');
+    }
+
+    public function test_apple_callback_linking_fails_when_apple_email_belongs_to_another_account(): void
+    {
+        $otherUser = User::factory()->create([
+            'email' => 'registered_email@example.com',
+        ]);
+
+        $currentUser = User::factory()->create([
+            'email' => 'current_user@example.com',
+            'apple_id' => null,
+        ]);
+        $this->actingAs($currentUser);
+
+        $mockTokenService = Mockery::mock(AppleTokenService::class);
+        $mockTokenService->shouldReceive('getClientSecret')->andReturn(null);
+        $mockTokenService->shouldReceive('verifyIdToken')->andReturn([
+            'sub' => 'new_unique_apple_sub',
+            'email' => 'registered_email@example.com',
+        ]);
+        $mockTokenService->shouldReceive('decodeToken')->andReturn([
+            'sub' => 'new_unique_apple_sub',
+            'email' => 'registered_email@example.com',
+        ]);
+        $this->app->instance(AppleTokenService::class, $mockTokenService);
+
+        $response = $this->post(route('auth.apple.callback'), [
+            'id_token' => 'dummy.jwt.token',
+        ]);
+
+        $response->assertRedirect(route('home'));
+        $response->assertSessionHas('error');
+    }
 }

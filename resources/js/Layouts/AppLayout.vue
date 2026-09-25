@@ -1,6 +1,6 @@
 <script setup>
 import { Link, usePage, router } from '@inertiajs/vue3';
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import BrandLogo from '../Components/BrandLogo.vue';
 import Footer from '../Components/Footer.vue';
 import ModalProfileAvatar from '../Components/ModalProfileAvatar.vue';
@@ -47,16 +47,34 @@ const handleGlobalKeyDown = (e) => {
     }
 };
 
+watch(
+    () => page.props.flash,
+    (flash) => {
+        if (flash?.message) {
+            showToast(flash.message, 'success');
+        }
+        if (flash?.error) {
+            showToast(flash.error, 'error');
+        }
+    },
+    { deep: true, immediate: true }
+);
+
+watch(
+    () => page.props.errors,
+    (errors) => {
+        if (errors?.error) {
+            showToast(errors.error, 'error');
+        } else if (errors?.invalid) {
+            showToast(errors.invalid, 'error');
+        }
+    },
+    { deep: true, immediate: true }
+);
+
 onMounted(() => {
     document.addEventListener('click', handleClickOutside, true);
     window.addEventListener('keydown', handleGlobalKeyDown);
-
-    if (page.props.flash?.message) {
-        showToast(page.props.flash.message, 'success');
-    }
-    if (page.props.flash?.error) {
-        showToast(page.props.flash.error, 'error');
-    }
 });
 
 onBeforeUnmount(() => {
