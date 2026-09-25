@@ -5,6 +5,13 @@ export const toasts = ref([]);
 let toastId = 0;
 
 export const showToast = (message, type = 'success', duration = 3000) => {
+    if (!message) return;
+
+    // Prevent duplicate toasts for the same message
+    if (toasts.value.some(t => t.message === message && t.type === type)) {
+        return;
+    }
+
     const id = ++toastId;
     const toast = { id, message, type };
     toasts.value.push(toast);

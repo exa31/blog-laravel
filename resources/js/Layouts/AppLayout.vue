@@ -48,25 +48,16 @@ const handleGlobalKeyDown = (e) => {
 };
 
 watch(
-    () => page.props.flash,
-    (flash) => {
-        if (flash?.message) {
-            showToast(flash.message, 'success');
-        }
-        if (flash?.error) {
-            showToast(flash.error, 'error');
-        }
-    },
-    { deep: true, immediate: true }
-);
+    () => [page.props.flash, page.props.errors],
+    ([flash, errors]) => {
+        const msg = flash?.message;
+        const err = flash?.error || errors?.error || errors?.invalid;
 
-watch(
-    () => page.props.errors,
-    (errors) => {
-        if (errors?.error) {
-            showToast(errors.error, 'error');
-        } else if (errors?.invalid) {
-            showToast(errors.invalid, 'error');
+        if (msg) {
+            showToast(msg, 'success');
+        }
+        if (err) {
+            showToast(err, 'error');
         }
     },
     { deep: true, immediate: true }

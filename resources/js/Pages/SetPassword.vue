@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import BrandLogo from '../Components/BrandLogo.vue';
 import EmptyLayout from '../Layouts/EmptyLayout.vue';
-import ToastNotification from '../Components/ToastNotification.vue';
 
 defineOptions({
     layout: EmptyLayout,
@@ -43,8 +42,6 @@ const cancel = () => {
         <meta name="description" content="Set a password for your new E-Blog account to complete registration." />
         <meta name="robots" content="noindex, follow" />
     </Head>
-
-    <ToastNotification />
 
     <div class="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 font-sans">
         <div class="w-full max-w-md space-y-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-8 sm:p-10 shadow-xl dark:shadow-card-dark relative overflow-hidden">
