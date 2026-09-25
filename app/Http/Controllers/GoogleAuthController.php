@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -22,7 +23,15 @@ class GoogleAuthController extends Controller
      */
     public function google(): RedirectResponse
     {
-        return Socialite::driver('google')->stateless()->redirect();
+        $state = Str::random(40);
+        if (Auth::check()) {
+            Cache::put('oauth_bind_user_' . $state, Auth::id(), now()->addMinutes(15));
+        }
+
+        return Socialite::driver('google')
+            ->stateless()
+            ->with(['state' => $state])
+            ->redirect();
     }
 
     /**
@@ -31,6 +40,11 @@ class GoogleAuthController extends Controller
      */
     public function googleRedirect(Request $request): RedirectResponse
     {
+        $state = $request->input('state');
+        $bindUserId = $state ? Cache::pull('oauth_bind_user_' . $state) : null;
+        /** @var User|null $currentUser */
+        $currentUser = Auth::user() ?? ($bindUserId ? User::find($bindUserId) : null);
+
         if ($request->has('error')) {
             $error = $request->input('error');
             $msg = ($error === 'access_denied')
@@ -39,7 +53,7 @@ class GoogleAuthController extends Controller
 
             Log::warning('Google OAuth callback error: '.$msg, $request->all());
 
-            if (Auth::check()) {
+            if ($currentUser) {
                 return redirect()->route('home')
                     ->with('error', $msg)
                     ->withErrors(['error' => $msg]);
@@ -55,7 +69,7 @@ class GoogleAuthController extends Controller
         } catch (\Throwable $e) {
             Log::error('Google OAuth callback failed: '.$e->getMessage());
             $failMsg = 'Google authentication failed. Please try again.';
-            if (Auth::check()) {
+            if ($currentUser) {
                 return redirect()->route('home')
                     ->with('error', $failMsg)
                     ->withErrors(['error' => $failMsg]);
@@ -72,7 +86,7 @@ class GoogleAuthController extends Controller
 
         if (empty($googleEmail)) {
             $noEmailMsg = 'Google authentication failed. No verified email returned by Google.';
-            if (Auth::check()) {
+            if ($currentUser) {
                 return redirect()->route('home')
                     ->with('error', $noEmailMsg)
                     ->withErrors(['error' => $noEmailMsg]);
@@ -83,11 +97,8 @@ class GoogleAuthController extends Controller
                 ->withErrors(['invalid' => $noEmailMsg]);
         }
 
-        // Case 1: User is already logged in (Linking flow)
-        if (Auth::check()) {
-            /** @var User $currentUser */
-            $currentUser = Auth::user();
-
+        // Case 1: User is already logged in (Linking / Bind flow)
+        if ($currentUser) {
             $existing = User::where('google_id', $googleId)->where('id', '!=', $currentUser->id)->first();
             if ($existing) {
                 $dupMsg = 'This Google account is already linked to another account.';
@@ -112,7 +123,16 @@ class GoogleAuthController extends Controller
                 'email_verified_at' => now(),
             ]);
 
-            return redirect()->route('home')->with('message', 'Google account connected and primary email updated successfully!');
+            $tokens = $this->jwtService->generateTokens($currentUser);
+            $accessCookie = $this->jwtService->getAccessTokenCookie($tokens['access_token']);
+            $refreshCookie = $this->jwtService->getRefreshTokenCookie($tokens['refresh_token']);
+            Auth::setUser($currentUser);
+            Auth::guard('web')->login($currentUser, true);
+
+            return redirect()->route('home')
+                ->with('message', 'Google account connected and primary email updated successfully!')
+                ->withCookie($accessCookie)
+                ->withCookie($refreshCookie);
         }
 
         // Case 2: Find existing user by google_id

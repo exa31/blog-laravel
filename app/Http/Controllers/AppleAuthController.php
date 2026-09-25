@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -32,6 +33,11 @@ class AppleAuthController extends Controller
         $redirectUri = urlencode(config('services.apple.redirect', url('/auth/apple-callback')));
         $state = Str::random(40);
         $nonce = Str::random(40);
+
+        if (Auth::check()) {
+            Cache::put('oauth_bind_user_' . $state, Auth::id(), now()->addMinutes(15));
+        }
+
         session(['apple_oauth_state' => $state]);
 
         $appleAuthUrl = "https://appleid.apple.com/auth/authorize?client_id={$clientId}&redirect_uri={$redirectUri}&response_type=code%20id_token&scope=name%20email&response_mode=form_post&state={$state}&nonce={$nonce}";
@@ -44,6 +50,11 @@ class AppleAuthController extends Controller
      */
     public function appleRedirect(Request $request): RedirectResponse
     {
+        $state = $request->input('state');
+        $bindUserId = $state ? Cache::pull('oauth_bind_user_' . $state) : null;
+        /** @var User|null $currentUser */
+        $currentUser = Auth::user() ?? ($bindUserId ? User::find($bindUserId) : null);
+
         // Check if Apple returned an error callback (e.g. user cancelled authorization)
         if ($request->has('error')) {
             $error = $request->input('error');
@@ -54,7 +65,7 @@ class AppleAuthController extends Controller
 
             Log::warning('Apple OAuth callback error: ' . $msg, $request->all());
 
-            if (Auth::check()) {
+            if ($currentUser) {
                 return redirect()->route('home')
                     ->with('error', $msg)
                     ->withErrors(['error' => $msg]);
@@ -117,7 +128,7 @@ class AppleAuthController extends Controller
 
         if (empty($appleId)) {
             $failMsg = 'Apple authentication failed. No valid Apple credentials received.';
-            if (Auth::check()) {
+            if ($currentUser) {
                 return redirect()->route('home')
                     ->with('error', $failMsg)
                     ->withErrors(['error' => $failMsg]);
@@ -128,11 +139,8 @@ class AppleAuthController extends Controller
                 ->withErrors(['invalid' => $failMsg]);
         }
 
-        // Case 1: User is already logged in (Linking flow)
-        if (Auth::check()) {
-            /** @var User $currentUser */
-            $currentUser = Auth::user();
-
+        // Case 1: User is already logged in (Linking / Bind flow)
+        if ($currentUser) {
             // Check if this Apple ID is already linked to a different account
             $existing = User::where('apple_id', $appleId)->where('id', '!=', $currentUser->id)->first();
             if ($existing) {
@@ -157,7 +165,16 @@ class AppleAuthController extends Controller
                 'apple_id' => $appleId,
             ]);
 
-            return redirect()->route('home')->with('message', 'Apple ID connected successfully!');
+            $tokens = $this->jwtService->generateTokens($currentUser);
+            $accessCookie = $this->jwtService->getAccessTokenCookie($tokens['access_token']);
+            $refreshCookie = $this->jwtService->getRefreshTokenCookie($tokens['refresh_token']);
+            Auth::setUser($currentUser);
+            Auth::guard('web')->login($currentUser, true);
+
+            return redirect()->route('home')
+                ->with('message', 'Apple ID connected successfully!')
+                ->withCookie($accessCookie)
+                ->withCookie($refreshCookie);
         }
 
         // Case 2: Find existing user by apple_id
