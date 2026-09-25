@@ -15,8 +15,12 @@ class ResendMailService
     public function sendVerificationCodeEmail(User $user, string $code): bool
     {
         $appName = config('app.name', 'E-Blog');
-        $fromAddress = config('mail.from.address') ?: env('MAIL_FROM_ADDRESS') ?: env('MAIN_FROM_ADDRESS') ?: 'no-reply@eka-dev.cloud';
-        $fromName = config('mail.from.name') ?: env('MAIL_FROM_NAME', $appName);
+        $fromAddress = (config('mail.from.address') && config('mail.from.address') !== 'hello@example.com')
+            ? config('mail.from.address')
+            : (env('MAIL_FROM_ADDRESS') ?: env('MAIN_FROM_ADDRESS') ?: 'no-reply@eka-dev.cloud');
+        $fromName = (config('mail.from.name') && config('mail.from.name') !== 'Example')
+            ? config('mail.from.name')
+            : (env('MAIL_FROM_NAME') ?: $appName);
         $resendApiKey = config('services.resend.key') ?: env('RESEND_KEY') ?: env('RESEND_API_KEY');
 
         $otpMsg = "📧 [Email Verification OTP] Target: {$user->email} | User: {$user->name} | Code: [ {$code} ] (Expires in 15 mins)";
@@ -98,8 +102,12 @@ class ResendMailService
     {
         $resetUrl = url("/reset-password/{$token}");
         $appName = config('app.name', 'E-Blog');
-        $fromAddress = config('mail.from.address') ?: env('MAIL_FROM_ADDRESS') ?: env('MAIN_FROM_ADDRESS') ?: 'no-reply@eka-dev.cloud';
-        $fromName = config('mail.from.name') ?: env('MAIL_FROM_NAME', $appName);
+        $fromAddress = (config('mail.from.address') && config('mail.from.address') !== 'hello@example.com')
+            ? config('mail.from.address')
+            : (env('MAIL_FROM_ADDRESS') ?: env('MAIN_FROM_ADDRESS') ?: 'no-reply@eka-dev.cloud');
+        $fromName = (config('mail.from.name') && config('mail.from.name') !== 'Example')
+            ? config('mail.from.name')
+            : (env('MAIL_FROM_NAME') ?: $appName);
         $resendApiKey = config('services.resend.key') ?: env('RESEND_KEY') ?: env('RESEND_API_KEY');
 
         $resetMsg = "📧 [Password Reset Link] Target: {$user->email} | Link: {$resetUrl}";
