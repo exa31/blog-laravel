@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/exa31/blog-laravel/compare/v1.10.0...v1.11.0) (2026-09-25)
+
+
+### Features
+
+* **auth:** guard registration and login OTP dispatch with daily rate limiting ([bc8f4d5](https://github.com/exa31/blog-laravel/commit/bc8f4d5ff90964f5d22aa88da59c9c1501d3fc89))
+
 # [1.10.0](https://github.com/exa31/blog-laravel/compare/v1.9.4...v1.10.0) (2026-09-24)
 
 
