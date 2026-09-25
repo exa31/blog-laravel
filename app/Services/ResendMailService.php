@@ -96,7 +96,7 @@ class ResendMailService
      */
     public function sendPasswordResetEmail(User $user, string $token): bool
     {
-        $resetUrl = url("/reset-password/{$token}?email=".urlencode($user->email));
+        $resetUrl = url("/reset-password/{$token}");
         $appName = config('app.name', 'E-Blog');
         $fromAddress = config('mail.from.address') ?: env('MAIL_FROM_ADDRESS') ?: env('MAIN_FROM_ADDRESS') ?: 'no-reply@eka-dev.cloud';
         $fromName = config('mail.from.name') ?: env('MAIL_FROM_NAME', $appName);

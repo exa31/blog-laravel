@@ -25,7 +25,6 @@ const showConfirmPassword = ref(false);
 
 const form = useForm({
     token: props.token,
-    email: props.email,
     password: '',
     password_confirm: '',
 });
@@ -74,7 +73,7 @@ const submit = () => {
 
             <!-- Form -->
             <form @submit.prevent="submit" class="space-y-4">
-                <!-- Locked Account Email Badge (If email is provided via reset link) -->
+                <!-- Locked Account Email Badge (Resolved securely by backend from DB) -->
                 <div v-if="props.email" class="p-3.5 rounded-2xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/60 flex items-center justify-between">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-9 h-9 shrink-0 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
@@ -87,24 +86,8 @@ const submit = () => {
                     </div>
                     <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                        Locked
+                        Verified
                     </span>
-                </div>
-
-                <!-- Fallback Input (Only if accessed without email parameter) -->
-                <div v-else>
-                    <label for="email" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                        Email Address
-                    </label>
-                    <input
-                        id="email"
-                        v-model="form.email"
-                        type="email"
-                        placeholder="you@example.com"
-                        required
-                        class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
-                    />
-                    <p v-if="form.errors.email" class="text-xs text-rose-500 mt-1">{{ form.errors.email }}</p>
                 </div>
 
                 <!-- New Password Field with Visibility Toggle -->

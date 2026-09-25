@@ -24,8 +24,9 @@ class PasswordResetTest extends TestCase
 
     public function test_requesting_password_reset_creates_token_and_sends_email(): void
     {
+        $email = 'reset.create.' . uniqid() . '@example.com';
         $user = User::factory()->create([
-            'email' => 'reset.test@example.com',
+            'email' => $email,
         ]);
 
         $mockMailService = Mockery::mock(ResendMailService::class);
@@ -36,19 +37,42 @@ class PasswordResetTest extends TestCase
         $this->app->instance(ResendMailService::class, $mockMailService);
 
         $response = $this->post(route('password.email'), [
-            'email' => 'reset.test@example.com',
+            'email' => $email,
         ]);
 
         $response->assertRedirect();
         $this->assertDatabaseHas('password_reset_tokens', [
-            'email' => 'reset.test@example.com',
+            'email' => $email,
         ]);
     }
 
-    public function test_reset_password_page_renders_with_token(): void
+    public function test_reset_password_page_renders_with_valid_token(): void
     {
-        $response = $this->get(route('password.reset', ['token' => 'sample-token', 'email' => 'user@example.com']));
+        $user = User::factory()->create([
+            'email' => 'user@example.com',
+        ]);
+
+        $plainToken = 'sample-plain-token-123';
+        DB::table('password_reset_tokens')->insert([
+            'email' => 'user@example.com',
+            'token' => hash('sha256', $plainToken),
+            'created_at' => now(),
+        ]);
+
+        $response = $this->get(route('password.reset', ['token' => $plainToken]));
         $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page
+            ->component('ResetPassword')
+            ->where('token', $plainToken)
+            ->where('email', 'user@example.com')
+        );
+    }
+
+    public function test_reset_password_page_redirects_for_invalid_token(): void
+    {
+        $response = $this->get(route('password.reset', ['token' => 'invalid-nonexistent-token']));
+        $response->assertRedirect(route('password.request'));
+        $response->assertSessionHasErrors(['invalid']);
     }
 
     public function test_submitting_valid_password_reset_updates_user_password(): void
@@ -61,13 +85,12 @@ class PasswordResetTest extends TestCase
         $plainToken = 'test-plain-token-secret-12345';
         DB::table('password_reset_tokens')->insert([
             'email' => 'john.doe@example.com',
-            'token' => Hash::make($plainToken),
+            'token' => hash('sha256', $plainToken),
             'created_at' => now(),
         ]);
 
         $response = $this->post(route('password.update'), [
             'token' => $plainToken,
-            'email' => 'john.doe@example.com',
             'password' => 'new_secret_password_888',
             'password_confirm' => 'new_secret_password_888',
         ]);
@@ -92,13 +115,12 @@ class PasswordResetTest extends TestCase
         $plainToken = 'expired-token-123';
         DB::table('password_reset_tokens')->insert([
             'email' => 'expired@example.com',
-            'token' => Hash::make($plainToken),
+            'token' => hash('sha256', $plainToken),
             'created_at' => Carbon::now()->subMinutes(65), // Expired > 60 mins
         ]);
 
         $response = $this->post(route('password.update'), [
             'token' => $plainToken,
-            'email' => 'expired@example.com',
             'password' => 'new_password_123',
             'password_confirm' => 'new_password_123',
         ]);
@@ -116,7 +138,7 @@ class PasswordResetTest extends TestCase
 
         DB::table('password_reset_tokens')->insert([
             'email' => 'cooldown@example.com',
-            'token' => Hash::make('recent-token'),
+            'token' => hash('sha256', 'recent-token'),
             'created_at' => Carbon::now()->subSeconds(20), // 20 seconds ago (< 60s)
         ]);
 

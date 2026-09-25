@@ -142,7 +142,7 @@ class EmailVerificationTest extends TestCase
     public function test_resending_code_generates_new_otp(): void
     {
         $user = User::factory()->create([
-            'email' => 'sara@example.com',
+            'email' => 'resend.valid@example.com',
             'email_verified_at' => null,
             'auth_provider' => 'email',
         ]);
@@ -154,31 +154,31 @@ class EmailVerificationTest extends TestCase
         $this->app->instance(ResendMailService::class, $mockMailService);
 
         $response = $this->postJson(route('verification.resend'), [
-            'email' => 'sara@example.com',
+            'email' => 'resend.valid@example.com',
         ]);
 
         $response->assertStatus(200);
         $this->assertDatabaseHas('email_verification_codes', [
-            'email' => 'sara@example.com',
+            'email' => 'resend.valid@example.com',
         ]);
     }
 
     public function test_resending_code_is_throttled_within_cooldown(): void
     {
         $user = User::factory()->create([
-            'email' => 'sara@example.com',
+            'email' => 'resend.throttled@example.com',
             'email_verified_at' => null,
             'auth_provider' => 'email',
         ]);
 
         DB::table('email_verification_codes')->insert([
-            'email' => 'sara@example.com',
+            'email' => 'resend.throttled@example.com',
             'code' => Hash::make('123456'),
             'created_at' => now(), // Sent just now
         ]);
 
         $response = $this->post(route('verification.resend'), [
-            'email' => 'sara@example.com',
+            'email' => 'resend.throttled@example.com',
         ]);
 
         $response->assertSessionHasErrors('invalid');
@@ -187,7 +187,7 @@ class EmailVerificationTest extends TestCase
     public function test_unverified_user_login_redirects_to_verification_page(): void
     {
         $user = User::factory()->create([
-            'email' => 'unverified@example.com',
+            'email' => 'unverified.login@example.com',
             'password' => Hash::make('password123'),
             'email_verified_at' => null,
             'auth_provider' => 'email',
@@ -200,7 +200,7 @@ class EmailVerificationTest extends TestCase
         $this->app->instance(ResendMailService::class, $mockMailService);
 
         $response = $this->post(route('login.post'), [
-            'email' => 'unverified@example.com',
+            'email' => 'unverified.login@example.com',
             'password' => 'password123',
         ]);
 

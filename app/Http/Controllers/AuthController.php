@@ -185,7 +185,7 @@ class AuthController extends Controller
             return redirect()->route('home');
         }
 
-        $email = session('verify_email_address') ?? $request->query('email');
+        $email = session('verify_email_address') ?? (Auth::check() ? Auth::user()->email : null);
         if (empty($email)) {
             return redirect()->route('register');
         }
@@ -483,7 +483,7 @@ class AuthController extends Controller
             DB::table('password_reset_tokens')->updateOrInsert(
                 ['email' => $user->email],
                 [
-                    'token' => Hash::make($plainToken),
+                    'token' => hash('sha256', $plainToken),
                     'created_at' => now(),
                 ]
             );
@@ -514,9 +514,23 @@ class AuthController extends Controller
             return redirect()->route('home');
         }
 
+        $record = DB::table('password_reset_tokens')
+            ->where('token', hash('sha256', $token))
+            ->first();
+
+        if (! $record || Carbon::parse($record->created_at)->addMinutes(60)->isPast()) {
+            if ($record) {
+                DB::table('password_reset_tokens')->where('email', $record->email)->delete();
+            }
+
+            return redirect()->route('password.request')->withErrors([
+                'invalid' => 'This password reset link is invalid or has expired. Please request a new one.',
+            ]);
+        }
+
         return Inertia::render('ResetPassword', [
             'token' => $token,
-            'email' => $request->query('email', ''),
+            'email' => $record->email,
         ]);
     }
 
@@ -527,31 +541,29 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'token' => 'required',
-            'email' => 'required|email',
             'password' => 'required|min:8|same:password_confirm',
             'password_confirm' => 'required|min:8',
         ]);
 
-        $record = DB::table('password_reset_tokens')->where('email', $validated['email'])->first();
+        $record = DB::table('password_reset_tokens')
+            ->where('token', hash('sha256', $validated['token']))
+            ->first();
 
-        if (! $record || ! Hash::check($validated['token'], $record->token)) {
+        if (! $record || Carbon::parse($record->created_at)->addMinutes(60)->isPast()) {
+            if ($record) {
+                DB::table('password_reset_tokens')->where('email', $record->email)->delete();
+            }
+
             return redirect()->back()->withErrors([
                 'invalid' => 'This password reset link is invalid or has expired. Please request a new one.',
             ])->withInput();
         }
 
-        // Check if token expired (valid for 60 minutes)
-        if (Carbon::parse($record->created_at)->addMinutes(60)->isPast()) {
-            DB::table('password_reset_tokens')->where('email', $validated['email'])->delete();
-
-            return redirect()->back()->withErrors([
-                'invalid' => 'This password reset link has expired. Please request a new one.',
-            ])->withInput();
-        }
-
-        $user = User::where('email', $validated['email'])->first();
+        $user = User::where('email', $record->email)->first();
 
         if (! $user) {
+            DB::table('password_reset_tokens')->where('email', $record->email)->delete();
+
             return redirect()->back()->withErrors([
                 'invalid' => 'User account not found.',
             ])->withInput();
@@ -562,7 +574,7 @@ class AuthController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        DB::table('password_reset_tokens')->where('email', $validated['email'])->delete();
+        DB::table('password_reset_tokens')->where('email', $record->email)->delete();
 
         // Revoke old tokens & log user in
         $this->jwtService->revokeAllUserTokens($user->id);
