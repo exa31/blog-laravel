@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/exa31/blog-laravel/compare/v1.11.4...v1.12.0) (2026-10-01)
+
+
+### Features
+
+* **post:** add archived status and fix filament logout jwt revocation ([f6efb5f](https://github.com/exa31/blog-laravel/commit/f6efb5fc7c62958f9af9852a668877650bb15876))
+
 ## [1.11.4](https://github.com/exa31/blog-laravel/compare/v1.11.3...v1.11.4) (2026-09-25)
 
 
