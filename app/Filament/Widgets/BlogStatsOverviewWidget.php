@@ -21,6 +21,7 @@ class BlogStatsOverviewWidget extends BaseWidget
 
         $publishedCount = Post::where('user_id', $userId)->where('status', 'published')->count();
         $draftCount = Post::where('user_id', $userId)->where('status', 'draft')->count();
+        $archivedCount = Post::where('user_id', $userId)->where('status', 'archived')->count();
 
         $totalLikes = Like::whereHas('post', fn ($q) => $q->where('user_id', $userId))->count();
         $totalComments = Comment::whereHas('post', fn ($q) => $q->where('user_id', $userId))->count();
@@ -44,9 +45,18 @@ class BlogStatsOverviewWidget extends BaseWidget
                 ->count();
         }
 
+        $breakdown = [];
+        if ($draftCount > 0) {
+            $breakdown[] = "{$draftCount} draft".($draftCount === 1 ? '' : 's');
+        }
+        if ($archivedCount > 0) {
+            $breakdown[] = "{$archivedCount} archived";
+        }
+        $description = ! empty($breakdown) ? implode(' · ', $breakdown) : 'All stories published';
+
         return [
             Stat::make('Published Stories', $publishedCount)
-                ->description("{$draftCount} draft".($draftCount === 1 ? '' : 's').' in progress')
+                ->description($description)
                 ->descriptionIcon('heroicon-m-document-text')
                 ->color('primary')
                 ->chart($postsSparkline),

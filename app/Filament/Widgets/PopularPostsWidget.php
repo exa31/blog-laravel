@@ -50,7 +50,8 @@ class PopularPostsWidget extends BaseWidget
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'published' => 'success',
-                        'draft' => 'warning',
+                        'draft' => 'info',
+                        'archived' => 'warning',
                         default => 'gray',
                     }),
             ])

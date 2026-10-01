@@ -41,7 +41,7 @@ class EditPost extends EditRecord
                 }
             }
         }
-        if (($data['status'] ?? null) === 'draft') {
+        if (in_array($data['status'] ?? null, ['draft', 'archived'])) {
             SavePost::where('post_id', $this->record->id)
                 ->delete();
         }

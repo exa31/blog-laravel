@@ -66,4 +66,9 @@ class FilamentAuthenticate extends BaseAuthenticate
             ?? $request->input('refresh_token')
             ?? $request->cookie('refresh_token');
     }
+
+    protected function redirectTo($request): ?string
+    {
+        return route('login');
+    }
 }

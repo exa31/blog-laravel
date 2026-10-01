@@ -80,6 +80,16 @@ class Post extends Model
         return $query->where('status', 'published');
     }
 
+    public function scopeArchived($query)
+    {
+        return $query->where('status', 'archived');
+    }
+
+    public function scopeDraft($query)
+    {
+        return $query->where('status', 'draft');
+    }
+
     public function scopeNewPost($query)
     {
         return $query->orderBy('created_at', 'desc');
