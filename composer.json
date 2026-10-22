@@ -72,7 +72,7 @@
     },
     "config": {
         "platform": {
-            "php": "8.3.16"
+            "php": "8.4.27"
         },
         "audit": {
             "block": false

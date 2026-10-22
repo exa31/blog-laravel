@@ -28,8 +28,9 @@ RUN install-php-extensions \
     pcntl \
     opcache
 
-# Use official production PHP configuration
-RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+# Use official production PHP configuration & apply security mitigations (CVE-2026-109618, CVE-2026-109619)
+RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" && \
+    echo "session.upload_progress.enabled = Off" >> "$PHP_INI_DIR/php.ini"
 
 WORKDIR /app
 
