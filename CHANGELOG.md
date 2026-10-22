@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/exa31/blog-laravel/compare/v1.12.0...v1.12.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **security:** apply PHP CVE-2026-109618 and CVE-2026-109619 hardening ([02d98a5](https://github.com/exa31/blog-laravel/commit/02d98a5cc67886cb89cf0231c9508ec21e357099))
+
 # [1.12.0](https://github.com/exa31/blog-laravel/compare/v1.11.4...v1.12.0) (2026-10-01)
 
 
